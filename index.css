@@ -1,4 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap');
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/archivoblack/v23/HTxqL289NzCGg4MzN6KJ7eW6CYKF_i7y.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/archivoblack/v23/HTxqL289NzCGg4MzN6KJ7eW6CYyF_g.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@media (max-width: 600px)
+{
+
+}
+@media (min-width: 601px)
+{
+
 html, body {
   margin: 0;
   width: 100%;
@@ -6,192 +29,36 @@ html, body {
 }
 
 :root {
-  --color-black: #000;
-  --color-white: #fff;
+  color-scheme: light;
 
-  --color-gray-100: #f5f5f5;
-  --color-gray-200: #e5e5e5;
-  --color-gray-300: #d4d4d4;
-  --color-gray-400: #a3a3a3;
-  --color-gray-500: #737373;
-  --color-gray-600: #525252;
-  --color-gray-700: #404040;
-  --color-gray-800: #262626;
-  --color-gray-900: #171717;
-
-  --p1_color-primary: #111111;
-  --p1_color-primary-ascent1: #212524;
-  --p1_color-primary-ascent2: #343442;
-  --p1_color-primary-ascent3: #2e2e46;
-  --p1_color-primary-ascent4: #373758;
-  --p1_color-primary-hover: #2d3b44;
-
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
+  --bg: hsl(0, 0%, 100%);
+  --contrast-text: hsl(0, 0%, 0%);
+  --c-lv1: hsl(0, 0%, 25%);
+  --c-lv2: hsl(0, 0%, 50%);
+  --c-lv3: hsl(0, 0%, 75%);
+  --bg: hsl(0, 0%, 100%);
 }
 
-.content {
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: hsl(0, 0%, 0%);
+  --contrast-text: hsl(0, 0%, 100%);
+  --c-lv1: hsl(0, 0%, 75%);
+  --c-lv2: hsl(0, 0%, 50%);
+  --c-lv3: hsl(0, 0%, 25%);
+  --bg: hsl(0, 0%, 100%);
+}
+
+#main {
   height: 100%;
   width: 100%;
-  background-color: var(--p1_color-primary);
+  background-color: var(bg);
 }
 
-.top-sidebar {
-  display: flex;
-  width: 100%;
-  height: 70px;
-
-  background-color: var(--p1_color-primary-ascent1);
-
-  align-items: center;
+#topbar{
+  height: max(160 , 20%);
 }
 
-.profile-btn {
-  position: relative;
 
-  margin-left: auto;
-  margin-right: 30px;
-
-  height: 50%;
-  aspect-ratio: 1 / 1;
-
-  border: none;
-  border-radius: 50%;
-
-  background-color: transparent;
-
-  cursor: pointer;
-}
-
-.profile-btn:hover {
-  background-color: var(--p1_color-primary-hover);
-}
-
-.profile-pfp {
-  width: 100%;
-  height: 100%;
-}
-
-@keyframes fadeInCenter {
-	0% {
-		opacity: 0;
-	}
-
-	100% {
-		opacity: 1;
-	}
-}
-
-@keyframes fadeOutCenter {
-	0% {
-		opacity: 1;
-	}
-
-	100% {
-		opacity: 0;
-	}
-}
-
-.profile-sidebar {
-  position: absolute; 
-  
-  top: 74px;
-  right: 25px;
-  
-  height: 0;
-  width: 0;
-  background-color: var(--color-gray-700);
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.profile-sidebar-open {
-  /* Keeps its top-right position, just scales up */
-  width: min(350px, 80%);
-  height: min(180px, 70%);
-}
-
-.profile-sidebar-logged-out {
-  /* Overrides the top/right anchors to smoothly center itself on the screen */
-  top: 25vh;
-  left: 35vw;
-  width: 30vw;
-  height: 50vh; 
-  
-  /* Reset the right property so left positioning works perfectly */
-  right: auto; 
-  animation: fadeInCenter 67ms linear 0ms 1 normal forwards;
-}
-
-.profile-sidebar-closed{
-  animation: fadeOutCenter 67ms linear 0s 1 normal forwards;
-}
-.user-info {
-  width: 100%;
-  height: 40%;
-  text-wrap: nowrap;
-  display: flex;
-  flex-direction: column;
-}
-
-.username {
-  width: 100%;
-  height: 100%;
-  font-family: "Archivo Black", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-  color: var(--color-white);
-}
-
-.profile-pfp-sidebar{
-  position: relative;
-  width: 20%;
-  height: auto;
-  aspect-ratio: 1/1;
-}
-
-.loggedIn{
-  width: 100%;
-  height: 100%;
-  display: flex;
-}
-.loggedOut{
-  width: 100%;
-  height: 100%;
-}
-
-.pfp-sidebar-info{
-  width: 100%;
-}
-
-.pfp-sidebar-user{
-  flex:1;
-  width: 100%;
-  height: 40%;
-  display: flex;
-  justify-content: center;
-}
-
-.noshow{
-  display: none;
-}
-
-.pfp-sidebar-close-btn{
-  position: absolute;
-  margin-top: 5px;
-  margin-left: calc(100% - 25px);
-  background-color: #00000000;
-  border: none;
-  color: #fff;
-}
-.pfp-sidebar-close-btn:hover{
-  position: absolute;
-  margin-top: 5px;
-  margin-left: calc(100% - 25px);
-  background-color: #0000000f;
-  border: none;
-}
-.register-text{
-  color: #DDD;
 }
