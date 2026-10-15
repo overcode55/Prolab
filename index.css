@@ -29,36 +29,163 @@ html, body {
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --bg: hsl(0, 0%, 100%);
-  --contrast-text: hsl(0, 0%, 0%);
-  --c-lv1: hsl(0, 0%, 25%);
-  --c-lv2: hsl(0, 0%, 50%);
-  --c-lv3: hsl(0, 0%, 75%);
-  --bg: hsl(0, 0%, 100%);
+  --c-abs : hsl(0, 0%, 100%);
+  --bg: hsl(0, 0%, 76%);
+  --c-lv0: hsl(0, 0%, 0%);
+  --c-lv0-5: hsl(0, 0%, 10%);
+  --c-lv1: hsl(0, 0%, 19%);
+  --c-lv2: hsl(0, 0%, 38%);
+  --c-lv3: hsl(0, 0%, 57%);
+  --c-lv3-5: hsl(0, 0%, 67%);
 }
 
 [data-theme="dark"] {
-  color-scheme: dark;
+  color-scheme: true-dark;
 
   --bg: hsl(0, 0%, 0%);
-  --contrast-text: hsl(0, 0%, 100%);
+  --c-lv0: hsl(0, 0%, 100%);
   --c-lv1: hsl(0, 0%, 75%);
   --c-lv2: hsl(0, 0%, 50%);
   --c-lv3: hsl(0, 0%, 25%);
-  --bg: hsl(0, 0%, 100%);
 }
 
 #main {
   height: 100%;
   width: 100%;
-  background-color: var(bg);
+  background-color: var(--bg);
+  display: flexbox;
 }
 
 #topbar{
-  height: max(160 , 20%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  height: max(100px, 8%);
+  box-sizing: border-box;
+  background-color: var(--c-lv0-5);
+  box-shadow: 0 5px 5px 3px var(--c-lv0-5);
 }
 
+#topbar div{
+  display: inline;
+}
+
+#topbar #logo{
+  height: max(75px , 5%);
+  aspect-ratio: 1/1;
+  display: inline;
+  position: relative;
+  left: -50px
+}
+
+#topbar #logo button{
+  width: 100%;
+  height: 100%;
+}
+
+#topbar #logo button img{
+  height: 100%;
+  aspect-ratio: 1/1;
+}
+
+
+#topbar #logo button{
+  background-color: hsla(0, 0%, 100%, 0);
+  border: none;
+}
+
+#topbar #logo button:hover{
+  background-color: hsla(0, 0%, 100%, 0);
+  border: none;
+  cursor: pointer;
+}
+
+#topbar #buttons{
+  width: 30%;
+  height: 50%;
+  display: flex;
+  align-content: center;
+  justify-content: space-between;
+  position: relative;
+  right: -6%;
+}
+#topbar #buttons button{
+  background-color: #00000000;
+  border: none;
+  font-family: "Archivo Black";
+  color: var(--c-abs);
+  cursor: pointer;
+  width: 33%;
+  font-size: 1.2em;
+  text-wrap: nowrap;
+}
+
+#topbar #buttons button{
+  display: inline;
+}
+
+#topbar #buttons button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    background: transparent;
+    border: none;
+    font-family: "Archivo Black", sans-serif;
+    color: var(--c-abs);
+    cursor: pointer;
+
+    width: 33%;
+    font-size: 1.2em;
+}
+
+.arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.arrow svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+
+    transition: transform 250ms ease;
+}
+
+#topbar #buttons button:hover .arrow svg {
+    transform: rotate(180deg);
+}
+
+#topbar #side-buttons{
+  width: 15%;
+  height: 50%;
+  position: relative;
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+#topbar #side-buttons button{
+  height: 100%;
+  aspect-ratio: 1/1;
+  position: relative;
+  background-color: #00000000;
+  border: none;
+}
+#topbar #side-buttons button img{
+  height: 100%;
+  aspect-ratio: 1/1;
+  position: relative;
+}
 
 }
