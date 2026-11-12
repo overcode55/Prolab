@@ -6,3 +6,7 @@ compatibility_date = "2024-11-01"
 binding = "DB"
 database_name = "prolab"
 database_id = "a164982a-56b1-4c5a-b885-ede24fd37548"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "prolab-files"

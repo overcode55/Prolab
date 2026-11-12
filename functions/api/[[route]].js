@@ -26,7 +26,7 @@ async function getUser(env,req){
 }
 export async function onRequest({request:req,env,waitUntil}){
   const url=new URL(req.url),p=url.pathname.replace(/^\/api\/?/,'').split('/').filter(Boolean);
-  const body=req.method==='POST'?await req.json().catch(()=>({})):{};
+  const body=req.method==='POST'&&(req.headers.get('content-type')||'').includes('json')?await req.json().catch(()=>({})):{};
   const [a,b,c]=p;
 
   if(a==='config')return J({google:env.GOOGLE_CLIENT_ID||''});
@@ -64,6 +64,13 @@ export async function onRequest({request:req,env,waitUntil}){
   if(a==='me')return J({user:me});
   if(!me)return E('Sign in first.',401);
 
+  if(a==='files'&&b){
+    const f=await env.DB.prepare('SELECT a.*,o.user_id ou FROM attachments a JOIN orders o ON o.id=a.order_id WHERE a.id=?').bind(+b).first();
+    if(!f||(!me.admin&&f.ou!==me.id))return E('Not found.',404);
+    const obj=await env.FILES?.get(f.key);if(!obj)return E('File missing.',404);
+    return new Response(obj.body,{headers:{'content-type':'application/octet-stream','content-disposition':`attachment; filename*=UTF-8''${encodeURIComponent(f.name)}`,'x-content-type-options':'nosniff'}});
+  }
+
   if(a==='orders'&&!b){
     if(req.method==='POST'){
       const t=String(body.title||'').trim();
@@ -90,9 +97,22 @@ export async function onRequest({request:req,env,waitUntil}){
       else if(env.NOTIFY_EMAIL)waitUntil(mail(env,env.NOTIFY_EMAIL,`Customer message on #${o.id}`,`${me.email}: ${text}\n\n${link}`));
       return J({ok:1});
     }
+    if(c==='files'&&req.method==='POST'){
+      if(!env.FILES)return E('File storage is not set up yet.',503);
+      const name=decodeURIComponent(req.headers.get('x-filename')||'file').replace(/[\\/]/g,'_').slice(0,120);
+      if(!/\.(stl|3mf|obj|step|stp|png|jpe?g|webp|pdf|zip|gcode)$/i.test(name))return E('This file type is not allowed.');
+      if(+req.headers.get('content-length')>26214400)return E('Max file size is 25 MB.');
+      if((await env.DB.prepare('SELECT COUNT(*) n FROM attachments WHERE order_id=?').bind(o.id).first()).n>=10)return E('Max 10 files per request.');
+      const buf=await req.arrayBuffer();if(buf.byteLength>26214400)return E('Max file size is 25 MB.');
+      const key=`${o.id}/${rnd(8)}-${name}`;await env.FILES.put(key,buf);
+      await env.DB.prepare('INSERT INTO attachments(order_id,user_id,name,size,key,created) VALUES(?,?,?,?,?,?)').bind(o.id,me.id,name,buf.byteLength,key,now()).run();
+      return J({ok:1});
+    }
     if(c==='delete'&&req.method==='POST'){
       if(!me.admin)return E('Not allowed.',403);
-      await env.DB.batch([env.DB.prepare('DELETE FROM messages WHERE order_id=?').bind(o.id),env.DB.prepare('DELETE FROM orders WHERE id=?').bind(o.id)]);
+      const ks=(await env.DB.prepare('SELECT key FROM attachments WHERE order_id=?').bind(o.id).all()).results;
+      if(env.FILES&&ks.length)await env.FILES.delete(ks.map(k=>k.key));
+      await env.DB.batch([env.DB.prepare('DELETE FROM attachments WHERE order_id=?').bind(o.id),env.DB.prepare('DELETE FROM messages WHERE order_id=?').bind(o.id),env.DB.prepare('DELETE FROM orders WHERE id=?').bind(o.id)]);
       return J({ok:1});
     }
     if(c==='status'&&req.method==='POST'){
@@ -103,7 +123,8 @@ export async function onRequest({request:req,env,waitUntil}){
       return J({ok:1});
     }
     const m=await env.DB.prepare('SELECT id,is_admin,body,created FROM messages WHERE order_id=? ORDER BY id').bind(o.id).all();
-    return J({order:o,messages:m.results,user:me});
+    const fl=await env.DB.prepare('SELECT id,name,size FROM attachments WHERE order_id=? ORDER BY id').bind(o.id).all();
+    return J({order:o,messages:m.results,files:fl.results,user:me});
   }
   return E('Not found.',404);
 }

@@ -39,7 +39,7 @@ dl{margin:0}dt{font-size:.8rem;color:var(--mut);margin-top:12px}dd{margin:0;whit
 .msg{max-width:80%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--line);background:#fff;border-radius:3px;white-space:pre-wrap;word-break:break-word}
 .msg.team{border-color:var(--g)}.msg.me{margin-left:auto;background:#e9f7ee;border-color:#b5e2c4}.msg small{display:block;color:var(--mut);font-size:.75rem;margin-bottom:2px}
 .chat form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}.chat input{flex:1}
-@media(max-width:760px){.two,footer .grid{grid-template-columns:1fr}.tl .row{grid-template-columns:1fr;gap:4px}nav{gap:14px}nav .hide{display:none}}
+@media(max-width:760px){.two,footer .grid{grid-template-columns:1fr}.tl .row{grid-template-columns:1fr;gap:4px}}
 @media(prefers-reduced-motion:no-preference){.btn{transition:background .15s}}
 .hero{position:relative;overflow:hidden;min-height:560px;display:flex;align-items:center}
 canvas.topo{position:absolute;inset:0;width:100%;height:100%}.hero .w,.ph .w{position:relative}
@@ -47,7 +47,7 @@ canvas.topo{position:absolute;inset:0;width:100%;height:100%}.hero .w,.ph .w{pos
 @keyframes up{from{opacity:0;transform:translateY(26px)}}
 .mq{overflow:hidden;background:var(--g);color:#fff;font-weight:600}.mq div{display:flex;gap:56px;width:max-content;padding:13px 0;animation:mq 34s linear infinite}@keyframes mq{to{transform:translateX(-50%)}}
 .rv{opacity:0;transform:translateY(22px);transition:opacity .7s,transform .7s}.rv.in{opacity:1;transform:none}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));border:1px solid var(--line);border-radius:4px}.stats div{padding:28px;border-right:1px solid var(--line)}.stats div:last-child{border:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1px solid var(--line);border-radius:4px}.stats div{padding:28px;border-right:1px solid var(--line)}.stats div:last-child{border:0}
 .stats b{display:block;font-size:2.4rem;line-height:1.1}.stats span{color:var(--mut);font-size:.9rem}
 .ph{position:relative;background:#161816;color:#fff;padding:64px 0;border-bottom:4px solid var(--g);overflow:hidden}.ph p{color:#c9cdc9;margin:0}
 .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
@@ -68,6 +68,26 @@ canvas.topo{position:absolute;inset:0;width:100%;height:100%}.hero .w,.ph .w{pos
 .vn{position:absolute;left:10px;bottom:8px;background:#fff;padding:2px 8px;border-radius:3px;font-size:.78rem}
 @media(max-width:760px){.wp{grid-template-columns:1fr}}
 .mini{font:inherit;font-size:.8rem;padding:3px 10px;border:1px solid var(--line);background:#fff;border-radius:3px;cursor:pointer}.mini:hover{border-color:var(--g)}.mini.x:hover{border-color:#c0281d;color:#c0281d}tr.dn{opacity:.45}
+html{-webkit-text-size-adjust:100%}
+.nl{display:flex;align-items:center;gap:28px}.bg{display:none}
+.bg{width:44px;height:44px;border:0;background:none;cursor:pointer;position:relative}
+.bg span,.bg span::before,.bg span::after{position:absolute;width:22px;height:2px;background:var(--ink);content:"";transition:transform .2s,top .2s}
+.bg span{top:21px;left:11px}.bg span::before{top:-7px;left:0}.bg span::after{top:7px;left:0}
+nav.open .bg span{background:transparent}nav.open .bg span::before{top:0;transform:rotate(45deg)}nav.open .bg span::after{top:0;transform:rotate(-45deg)}
+.bt{display:flex;gap:10px;flex-wrap:wrap}.hero .btn+.btn{margin-left:0}
+.dz{border:2px dashed #b9bdb9;border-radius:4px;padding:26px 16px;text-align:center;cursor:pointer;background:var(--alt)}.dz p{margin:0}.dz small{color:var(--mut)}
+.dz.on,.dz:hover{border-color:var(--g);background:#eef8f1}
+.fl2{list-style:none;padding:0;margin:10px 0}.fl2 li{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);word-break:break-all}.fl2 li small{color:var(--mut);margin-left:auto;white-space:nowrap}
+.stage canvas{touch-action:none}td{word-break:break-word}
+@media(max-width:760px){
+.bg{display:block}
+.nl{display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:1px solid var(--line);flex-direction:column;align-items:stretch;gap:0;padding:6px 20px 18px}
+nav.open .nl{display:flex}.nl a.l{padding:13px 0;border-bottom:1px solid var(--line)}.nl .btn{margin-top:14px;text-align:center}
+.hero{min-height:440px;padding:56px 0}.sec{padding:44px 0}.ph{padding:44px 0}h2{font-size:1.5rem}.cta{padding:40px 0}
+.narrow{margin:28px auto}.page{padding:24px 0 48px}th,td{padding:12px 6px}
+.hm{display:none}.mini{padding:8px 12px}.chat{height:min(520px,72dvh)}.chat input{min-width:0}.msg{max-width:92%}
+.stats.s3 div{border-right:1px solid var(--line);border-bottom:0}.stats.s3 div:last-child{border:0}
+.top{font-size:.78rem;padding:7px 12px}}
 </style></head><body>
 <div class="top">Quotes within one working day. Custom models designed from a sketch or a photo.</div>
 <header><div class="w"><nav id="nav"></nav></div></header>
@@ -86,11 +106,27 @@ async function api(p,body){
   const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Something went wrong.');return d;
 }
 function nav(){
-  $('#nav').innerHTML=`<a class="logo" href="#/"><img src="assets/logo/favicon.png" alt="" width="32" height="32">ProLab</a><a class="l" href="#/gallery">Past work</a>`+
-  (me?`<a class="l" href="#/orders">${me.admin?'All requests':'My requests'}</a><a class="l hide" href="#" id="out">Sign out</a><a class="btn" href="#/new">New request</a>`
-     :`<a class="l" href="#/login">Sign in</a><a class="btn" href="#/new">Start a request</a>`);
+  const n=$('#nav');n.classList.remove('open');
+  n.innerHTML=`<a class="logo" href="#/"><img src="assets/logo/favicon.png" alt="" width="32" height="32">ProLab</a><button class="bg" id="bg" aria-label="Menu" aria-expanded="false"><span></span></button><div class="nl"><a class="l" href="#/gallery">Past work</a>`+
+  (me?`<a class="l" href="#/orders">${me.admin?'All requests':'My requests'}</a><a class="l" href="#" id="out">Sign out</a><a class="btn" href="#/new">New request</a>`
+     :`<a class="l" href="#/login">Sign in</a><a class="btn" href="#/new">Start a request</a>`)+'</div>';
+  $('#bg').onclick=()=>{const o=n.classList.toggle('open');$('#bg').setAttribute('aria-expanded',o);};
   $('#out')?.addEventListener('click',async e=>{e.preventDefault();await api('auth/logout',{});me=null;nav();location.hash='#/';});
 }
+const DZ='<div class="dz" tabindex="0" role="button"><p><b>Drop files here</b> or tap to choose<br><small>STL, 3MF, OBJ, STEP, images, PDF, ZIP. Up to 25 MB each, 10 files.</small></p><input type="file" multiple hidden accept=".stl,.3mf,.obj,.step,.stp,.png,.jpg,.jpeg,.webp,.pdf,.zip,.gcode"></div><ul class="fl2"></ul>';
+['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
+function dropzone(root,list,cb){
+  const dz=root.querySelector('.dz'),fi=root.querySelector('input[type=file]'),ul=root.querySelector('.fl2');
+  const draw=()=>{ul.innerHTML=list.map((f,i)=>`<li>${esc(f.name)} <small>${(f.size/1048576).toFixed(1)} MB</small><button type="button" class="mini" data-i="${i}">Remove</button></li>`).join('');cb&&cb();};
+  const add=fs=>{for(const f of fs){if(list.length>=10)break;if(f.size>26214400){alert(f.name+' is over 25 MB.');continue;}list.push(f);}draw();};
+  dz.onclick=()=>fi.click();dz.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fi.click();}};
+  fi.onchange=()=>{add(fi.files);fi.value='';};
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('on');}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('on');}));
+  dz.addEventListener('drop',e=>add(e.dataTransfer.files));
+  ul.onclick=e=>{const b=e.target.closest('button');if(b){list.splice(+b.dataset.i,1);draw();}};
+}
+async function upload(id,list){for(const f of list){const r=await fetch(`/api/orders/${id}/files`,{method:'POST',headers:{'x-filename':encodeURIComponent(f.name),'content-type':'application/octet-stream'},body:f});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||'Upload failed');}}
 const SH=['M35 15h30c0 15-8 20-8 35s12 25 12 40H31c0-15 12-25 12-40S35 30 35 15z','M50 10L85 30V70L50 90L15 70V30z','M50 12a12 12 0 1 1 0 24a12 12 0 1 1 0-24zM30 90V55q0-18 20-18t20 18v35z','M12 80C12 40 38 20 60 25c10 2 12 12 26 10-2 15-10 20-20 22 10 15 5 28-5 33z','M12 55a38 32 0 0 1 76 0zM40 55h20v35H40z','M18 18h64v16H36v48H18z'];
 const WORK=[
 {t:'Articulated dragon',cat:'Figurines',mat:'PLA silk',h:26,who:'M.K.',sh:3,col:'#c8433a',img:['dragon/dragon (1).webp','dragon/dragon (2).webp'],stl:['dragon/dragon.stl'],lay:'0.2 mm',inf:'15%',w:3,sup:'None',tags:['articulated','dragon','print-in-place'],d:'Every segment moves, printed flat in one go with no assembly. Done in two-colour silk filament for the scale shimmer.'},
@@ -157,7 +193,7 @@ function workPage(i){
   app.innerHTML=`<div class="w page"><p><a href="#/gallery">Past work</a> / ${esc(w.cat)}</p><div class="wp"><div><div class="stage" id="st"></div>
   <div class="th" id="th">${w.img.map((_,k)=>`<button data-k="${k}">${photo(i,k)}</button>`).join('')}${w.stl.map((_,n)=>`<button data-k="m${n}" class="d3">3D model${w.stl.length>1?' '+(n+1):''}</button>`).join('')}</div></div>
   <aside><h1 style="font-size:2rem">${esc(w.t)}</h1><p style="color:var(--mut)">Made for ${esc(w.who)}</p>
-  <div class="stats" style="grid-template-columns:repeat(3,1fr)"><div style="padding:14px"><b style="font-size:1.3rem">${(i+3)*412}</b><span>views</span></div><div style="padding:14px"><b style="font-size:1.3rem">${(i+2)*37}</b><span>likes</span></div><div style="padding:14px"><b style="font-size:1.3rem">${(i+1)*9}</b><span>prints</span></div></div><br>
+  <div class="stats s3" style="grid-template-columns:repeat(3,1fr)"><div style="padding:14px"><b style="font-size:1.3rem">${(i+3)*412}</b><span>views</span></div><div style="padding:14px"><b style="font-size:1.3rem">${(i+2)*37}</b><span>likes</span></div><div style="padding:14px"><b style="font-size:1.3rem">${(i+1)*9}</b><span>prints</span></div></div><br>
   <a class="btn" href="#/new" id="mk" style="width:100%;text-align:center">Order something like this</a></aside></div>
   <div class="wp" style="margin-top:36px"><div><h3>Description</h3><p>${esc(w.d)}</p><h3>Tags</h3><p>${w.tags.map(t=>`<span class="st">${esc(t)}</span> `).join('')}</p></div>
   <aside><h3>Print settings</h3><table><tr><td>Material</td><td>${w.mat}</td></tr><tr><td>Layer height</td><td>${w.lay}</td></tr><tr><td>Infill</td><td>${w.inf}</td></tr><tr><td>Walls</td><td>${w.w}</td></tr><tr><td>Supports</td><td>${w.sup}</td></tr><tr><td>Print time</td><td>${w.h} h</td></tr></table></aside></div></div>`;
@@ -207,8 +243,8 @@ async function orders(){
   const draw=()=>{
     const nd=all.filter(o=>o.status==='done').length,list=adm&&hideDone?all.filter(o=>o.status!=='done'):all;
     app.innerHTML=`<div class="w page"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px"><h2 style="margin:0">${adm?'All requests':'My requests'}</h2><div>${adm&&nd?`<button class="btn o" id="hd">${hideDone?'Show':'Hide'} done (${nd})</button> `:''}<a class="btn" href="#/new">New request</a></div></div>
-    ${list.length?`<div style="overflow-x:auto"><table><tr><th>#</th><th>Title</th><th>Type</th>${adm?'<th>Customer</th>':''}<th>Status</th><th>Created</th>${adm?'<th></th>':''}</tr>
-    ${list.map(o=>`<tr class="go ${o.status==='done'?'dn':''}" tabindex="0" data-id="${o.id}"><td>${o.id}</td><td>${esc(o.title)}</td><td>${o.kind==='design'?'Design + print':'Print only'}</td>${adm?`<td>${esc(o.email)}</td>`:''}<td><span class="st ${o.status}">${o.status}</span></td><td>${fmt(o.created)}</td>${adm?`<td style="white-space:nowrap">${o.status!=='done'?'<button class="mini" data-a="done">Done</button> ':''}<button class="mini x" data-a="del">Delete</button></td>`:''}</tr>`).join('')}</table></div>`
+    ${list.length?`<div style="overflow-x:auto"><table><tr><th>#</th><th>Title</th><th class="hm">Type</th>${adm?'<th>Customer</th>':''}<th>Status</th><th class="hm">Created</th>${adm?'<th></th>':''}</tr>
+    ${list.map(o=>`<tr class="go ${o.status==='done'?'dn':''}" tabindex="0" data-id="${o.id}"><td>${o.id}</td><td>${esc(o.title)}</td><td class="hm">${o.kind==='design'?'Design + print':'Print only'}</td>${adm?`<td>${esc(o.email)}</td>`:''}<td><span class="st ${o.status}">${o.status}</span></td><td class="hm">${fmt(o.created)}</td>${adm?`<td style="white-space:nowrap">${o.status!=='done'?'<button class="mini" data-a="done">Done</button> ':''}<button class="mini x" data-a="del">Delete</button></td>`:''}</tr>`).join('')}</table></div>`
     :`<div class="card"><h3>${all.length?'Everything is done':'No requests yet'}</h3><p>${all.length?'Completed requests are hidden.':'Create your first request and we will get back to you in the chat.'}</p></div>`}</div>`;
     $('#hd')?.addEventListener('click',()=>{hideDone=!hideDone;try{localStorage.setItem('hd',hideDone?'1':'0');}catch{}draw();});
     app.querySelectorAll('tr.go').forEach(r=>{const id=+r.dataset.id,g=()=>location.hash='#/order/'+id;r.onclick=g;r.onkeydown=e=>e.key==='Enter'&&e.target===r&&g();
@@ -226,9 +262,14 @@ function newOrder(){
   <label for="l">Link to file or reference images (optional)</label><input id="l" type="url" placeholder="https://drive.google.com/…">
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px"><div><label for="m">Material</label><select id="m"><option>PLA</option><option>PETG</option><option>ABS</option><option>TPU</option><option>Not sure</option></select></div>
   <div><label for="q">Quantity</label><input id="q" type="number" min="1" value="1"></div></div>
-  <div class="err" id="er" role="alert"></div><button class="btn">Send request</button></form></div></div>`;
+  <label>Files (optional)</label>${DZ}<div class="err" id="er" role="alert"></div><button class="btn" id="sb">Send request</button></form></div></div>`;
   $('#t').value=window.pre||'';window.pre='';
-  $('#f').onsubmit=async e=>{e.preventDefault();try{const r=await api('orders',{kind:$('#k').value,title:$('#t').value,details:$('#d').value,link:$('#l').value,material:$('#m').value,qty:$('#q').value});location.hash='#/order/'+r.id;}catch(x){$('#er').textContent=x.message;}};
+  const files=[];dropzone(app,files);
+  $('#f').onsubmit=async e=>{e.preventDefault();$('#er').textContent='';const sb=$('#sb');sb.disabled=true;sb.textContent='Sending…';let r;
+    try{r=await api('orders',{kind:$('#k').value,title:$('#t').value,details:$('#d').value,link:$('#l').value,material:$('#m').value,qty:$('#q').value});}
+    catch(x){$('#er').textContent=x.message;sb.disabled=false;sb.textContent='Send request';return;}
+    try{await upload(r.id,files);}catch(x){alert('Your request was created, but a file did not upload: '+x.message+'. You can add it again on the request page.');}
+    location.hash='#/order/'+r.id;};
 }
 async function orderPage(id){
   let d;try{d=await api('orders/'+id);}catch(x){app.innerHTML=`<div class="w page"><p>${esc(x.message)}</p></div>`;return;}
@@ -237,7 +278,7 @@ async function orderPage(id){
   <div class="card"><dl><dt>Status</dt><dd><span class="st ${o.status}" id="stb">${o.status}</span></dd>
   ${adm?`<dt>Change status</dt><dd><select id="ss">${['new','quoted','designing','printing','shipped','done'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></dd><dt>Customer</dt><dd>${esc(o.email)}</dd><dd style="margin-top:14px"><button class="btn" id="md">Mark as done</button> <button class="btn o" id="rm">Delete request</button></dd>`:''}
   <dt>Type</dt><dd>${o.kind==='design'?'Design and print':'Print only'}</dd><dt>Material / quantity</dt><dd>${esc(o.material)} × ${o.qty}</dd>
-  <dt>Details</dt><dd>${esc(o.details)||'-'}</dd>${o.link?`<dt>Link</dt><dd><a href="${esc(o.link)}" target="_blank" rel="noopener">${esc(o.link)}</a></dd>`:''}<dt>Created</dt><dd>${fmt(o.created)}</dd></dl></div>
+  <dt>Details</dt><dd>${esc(o.details)||'-'}</dd>${o.link?`<dt>Link</dt><dd><a href="${esc(o.link)}" target="_blank" rel="noopener">${esc(o.link)}</a></dd>`:''}<dt>Created</dt><dd>${fmt(o.created)}</dd><dt>Files</dt><dd id="fls"></dd></dl><div style="margin-top:14px" id="up">${DZ}<button class="btn o" id="ub" hidden>Upload files</button></div></div>
   <div class="chat"><div class="log" id="log" aria-live="polite"></div><form id="cf"><input id="ci" placeholder="${adm?'Reply to the customer':'Ask a question or add details'}" maxlength="2000" autocomplete="off"><button class="btn">Send</button></form></div></div></div>`;
   const draw=m=>{const L=$('#log'),end=L.scrollTop+L.clientHeight>=L.scrollHeight-40;
     L.innerHTML=m.length?m.map(x=>`<div class="msg ${x.is_admin?'team':''} ${!!x.is_admin===adm?'me':''}"><small>${x.is_admin?'ProLab':'Customer'} · ${fmt(x.created)}</small>${esc(x.body)}</div>`).join('')
@@ -246,12 +287,15 @@ async function orderPage(id){
   $('#cf').onsubmit=async e=>{e.preventDefault();const v=$('#ci').value.trim();if(!v)return;$('#ci').value='';
     try{await api(`orders/${id}/messages`,{body:v});draw((await api('orders/'+id)).messages);$('#log').scrollTop=1e6;}catch(x){alert(x.message);}};
   $('#ss')?.addEventListener('change',async e=>{await api(`orders/${id}/status`,{status:e.target.value});$('#stb').textContent=e.target.value;$('#stb').className='st '+e.target.value;});
+  const drawFiles=f=>{$('#fls').innerHTML=f.length?f.map(x=>`<a href="/api/files/${x.id}">${esc(x.name)}</a> <small>${(x.size/1048576).toFixed(1)} MB</small>`).join('<br>'):'-';};drawFiles(d.files||[]);
+  const nf=[];dropzone($('#up'),nf,()=>{$('#ub').hidden=!nf.length;});
+  $('#ub').onclick=async()=>{const b=$('#ub');b.disabled=true;try{await upload(id,nf);nf.length=0;$('#up .fl2').innerHTML='';b.hidden=true;drawFiles((await api('orders/'+id)).files);}catch(x){alert(x.message);}b.disabled=false;};
   $('#md')?.addEventListener('click',async()=>{await api(`orders/${id}/status`,{status:'done'});$('#ss').value='done';$('#stb').textContent='done';$('#stb').className='st done';});
   $('#rm')?.addEventListener('click',async()=>{if(!confirm('Delete this request and its messages? This cannot be undone.'))return;try{await api(`orders/${id}/delete`,{});location.hash='#/orders';}catch(x){alert(x.message);}});
   poll=setInterval(async()=>{try{draw((await api('orders/'+id)).messages);}catch{}},5000);
 }
 async function route(){
-  clearInterval(poll);const [p,id]=(location.hash.slice(2)||'').split('/');
+  clearInterval(poll);$('#nav').classList.remove('open');const [p,id]=(location.hash.slice(2)||'').split('/');
   if(['orders','new','order'].includes(p)&&!me){location.hash='#/login';return;}
   const r={'':home,gallery,work:()=>workPage(+id),login,orders,new:newOrder,order:()=>orderPage(id)};(r[p]||home)();scrollTo(0,0);fx();if(!p)liveStats();
 }

@@ -24,3 +24,6 @@ assets/<folder>/<name>.webp   (dragon, pot, knight, gearbox, dog, cable, chamele
 assets/<folder>/<name>.stl    (optional, shown in the 3D viewer)
 ```
 Names are listed in the `WORK` array in `index.html`. Missing photos fall back to a drawing, missing STLs to a demo shape.
+
+## File uploads (R2)
+Enable R2 in the Cloudflare dashboard (Storage & databases, R2), then `npx wrangler r2 bucket create prolab-files` and re-run `schema.sql`. Remove the `[[r2_buckets]]` block from `wrangler.toml` if you do not want uploads.
