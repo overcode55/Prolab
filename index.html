@@ -67,13 +67,14 @@ canvas.topo{position:absolute;inset:0;width:100%;height:100%}.hero .w,.ph .w{pos
 .th img,.th .fb{width:100%;height:100%;object-fit:cover}.th .d3{font-size:.8rem;font-weight:600}
 .vn{position:absolute;left:10px;bottom:8px;background:#fff;padding:2px 8px;border-radius:3px;font-size:.78rem}
 @media(max-width:760px){.wp{grid-template-columns:1fr}}
+.mini{font:inherit;font-size:.8rem;padding:3px 10px;border:1px solid var(--line);background:#fff;border-radius:3px;cursor:pointer}.mini:hover{border-color:var(--g)}.mini.x:hover{border-color:#c0281d;color:#c0281d}tr.dn{opacity:.45}
 </style></head><body>
 <div class="top">Quotes within one working day. Custom models designed from a sketch or a photo.</div>
 <header><div class="w"><nav id="nav"></nav></div></header>
 <main id="app"></main>
 <footer><div class="w"><div class="grid"><div><h3>ProLab</h3><p>A small print shop. We print your files, or we design the model with you and then print it.</p></div>
 <div><h3>Site</h3><a href="#/">Home</a><a href="#/gallery">Past work</a><a href="#/new">New request</a><a href="#/orders">My requests</a></div>
-<div><h3>Contact</h3><a href="mailto:prolab.support@gmail.com">prolab.support@gmail.com</a><a href="#/login">Sign in</a></div></div>
+<div><h3>Contact</h3><a href="mailto:hello@example.com">hello@example.com</a><a href="#/login">Sign in</a></div></div>
 <p style="margin-top:32px">© 2026 ProLab. All rights reserved.</p></div></footer>
 <script>
 const $=s=>document.querySelector(s),app=$('#app');
@@ -199,14 +200,23 @@ function login(){
   function initG(){google.accounts.id.initialize({client_id:cfg.google,callback:async r=>{try{await api('auth/google',{credential:r.credential});await done();}catch(x){$('#er').textContent=x.message;}}});
     google.accounts.id.renderButton($('#gb'),{theme:'outline',size:'large',shape:'rectangular',width:320,text:'continue_with'});}
 }
+let hideDone=false;try{hideDone=localStorage.getItem('hd')==='1';}catch{}
 async function orders(){
   app.innerHTML='<div class="w page"><p>Loading…</p></div>';
-  const {orders}=(await api('orders'));
-  app.innerHTML=`<div class="w page"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="margin:0">${me.admin?'All requests':'My requests'}</h2><a class="btn" href="#/new">New request</a></div>
-  ${orders.length?`<div style="overflow-x:auto"><table><tr><th>#</th><th>Title</th><th>Type</th>${me.admin?'<th>Customer</th>':''}<th>Status</th><th>Created</th></tr>
-  ${orders.map(o=>`<tr class="go" tabindex="0" data-id="${o.id}"><td>${o.id}</td><td>${esc(o.title)}</td><td>${o.kind==='design'?'Design + print':'Print only'}</td>${me.admin?`<td>${esc(o.email)}</td>`:''}<td><span class="st ${o.status}">${o.status}</span></td><td>${fmt(o.created)}</td></tr>`).join('')}</table></div>`
-  :'<div class="card"><h3>No requests yet</h3><p>Create your first request and we will get back to you in the chat.</p></div>'}</div>`;
-  app.querySelectorAll('tr.go').forEach(r=>{const g=()=>location.hash='#/order/'+r.dataset.id;r.onclick=g;r.onkeydown=e=>e.key==='Enter'&&g();});
+  const all=(await api('orders')).orders,adm=me.admin;
+  const draw=()=>{
+    const nd=all.filter(o=>o.status==='done').length,list=adm&&hideDone?all.filter(o=>o.status!=='done'):all;
+    app.innerHTML=`<div class="w page"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px"><h2 style="margin:0">${adm?'All requests':'My requests'}</h2><div>${adm&&nd?`<button class="btn o" id="hd">${hideDone?'Show':'Hide'} done (${nd})</button> `:''}<a class="btn" href="#/new">New request</a></div></div>
+    ${list.length?`<div style="overflow-x:auto"><table><tr><th>#</th><th>Title</th><th>Type</th>${adm?'<th>Customer</th>':''}<th>Status</th><th>Created</th>${adm?'<th></th>':''}</tr>
+    ${list.map(o=>`<tr class="go ${o.status==='done'?'dn':''}" tabindex="0" data-id="${o.id}"><td>${o.id}</td><td>${esc(o.title)}</td><td>${o.kind==='design'?'Design + print':'Print only'}</td>${adm?`<td>${esc(o.email)}</td>`:''}<td><span class="st ${o.status}">${o.status}</span></td><td>${fmt(o.created)}</td>${adm?`<td style="white-space:nowrap">${o.status!=='done'?'<button class="mini" data-a="done">Done</button> ':''}<button class="mini x" data-a="del">Delete</button></td>`:''}</tr>`).join('')}</table></div>`
+    :`<div class="card"><h3>${all.length?'Everything is done':'No requests yet'}</h3><p>${all.length?'Completed requests are hidden.':'Create your first request and we will get back to you in the chat.'}</p></div>`}</div>`;
+    $('#hd')?.addEventListener('click',()=>{hideDone=!hideDone;try{localStorage.setItem('hd',hideDone?'1':'0');}catch{}draw();});
+    app.querySelectorAll('tr.go').forEach(r=>{const id=+r.dataset.id,g=()=>location.hash='#/order/'+id;r.onclick=g;r.onkeydown=e=>e.key==='Enter'&&e.target===r&&g();
+      r.querySelectorAll('.mini').forEach(b=>b.onclick=async e=>{e.stopPropagation();
+        try{if(b.dataset.a==='done'){await api(`orders/${id}/status`,{status:'done'});all.find(o=>o.id===id).status='done';}
+        else{if(!confirm(`Delete request #${id} and its messages? This cannot be undone.`))return;await api(`orders/${id}/delete`,{});all.splice(all.findIndex(o=>o.id===id),1);}
+        draw();}catch(x){alert(x.message);}});});
+  };draw();
 }
 function newOrder(){
   app.innerHTML=`<div class="w page"><div style="max-width:620px"><h2>New request</h2>
@@ -225,7 +235,7 @@ async function orderPage(id){
   const o=d.order,adm=me.admin;
   app.innerHTML=`<div class="w page"><p><a href="#/orders">Back to requests</a></p><h2>#${o.id} ${esc(o.title)}</h2><div class="two">
   <div class="card"><dl><dt>Status</dt><dd><span class="st ${o.status}" id="stb">${o.status}</span></dd>
-  ${adm?`<dt>Change status</dt><dd><select id="ss">${['new','quoted','designing','printing','shipped','done'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></dd><dt>Customer</dt><dd>${esc(o.email)}</dd>`:''}
+  ${adm?`<dt>Change status</dt><dd><select id="ss">${['new','quoted','designing','printing','shipped','done'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></dd><dt>Customer</dt><dd>${esc(o.email)}</dd><dd style="margin-top:14px"><button class="btn" id="md">Mark as done</button> <button class="btn o" id="rm">Delete request</button></dd>`:''}
   <dt>Type</dt><dd>${o.kind==='design'?'Design and print':'Print only'}</dd><dt>Material / quantity</dt><dd>${esc(o.material)} × ${o.qty}</dd>
   <dt>Details</dt><dd>${esc(o.details)||'-'}</dd>${o.link?`<dt>Link</dt><dd><a href="${esc(o.link)}" target="_blank" rel="noopener">${esc(o.link)}</a></dd>`:''}<dt>Created</dt><dd>${fmt(o.created)}</dd></dl></div>
   <div class="chat"><div class="log" id="log" aria-live="polite"></div><form id="cf"><input id="ci" placeholder="${adm?'Reply to the customer':'Ask a question or add details'}" maxlength="2000" autocomplete="off"><button class="btn">Send</button></form></div></div></div>`;
@@ -236,6 +246,8 @@ async function orderPage(id){
   $('#cf').onsubmit=async e=>{e.preventDefault();const v=$('#ci').value.trim();if(!v)return;$('#ci').value='';
     try{await api(`orders/${id}/messages`,{body:v});draw((await api('orders/'+id)).messages);$('#log').scrollTop=1e6;}catch(x){alert(x.message);}};
   $('#ss')?.addEventListener('change',async e=>{await api(`orders/${id}/status`,{status:e.target.value});$('#stb').textContent=e.target.value;$('#stb').className='st '+e.target.value;});
+  $('#md')?.addEventListener('click',async()=>{await api(`orders/${id}/status`,{status:'done'});$('#ss').value='done';$('#stb').textContent='done';$('#stb').className='st done';});
+  $('#rm')?.addEventListener('click',async()=>{if(!confirm('Delete this request and its messages? This cannot be undone.'))return;try{await api(`orders/${id}/delete`,{});location.hash='#/orders';}catch(x){alert(x.message);}});
   poll=setInterval(async()=>{try{draw((await api('orders/'+id)).messages);}catch{}},5000);
 }
 async function route(){

@@ -90,6 +90,11 @@ export async function onRequest({request:req,env,waitUntil}){
       else if(env.NOTIFY_EMAIL)waitUntil(mail(env,env.NOTIFY_EMAIL,`Customer message on #${o.id}`,`${me.email}: ${text}\n\n${link}`));
       return J({ok:1});
     }
+    if(c==='delete'&&req.method==='POST'){
+      if(!me.admin)return E('Not allowed.',403);
+      await env.DB.batch([env.DB.prepare('DELETE FROM messages WHERE order_id=?').bind(o.id),env.DB.prepare('DELETE FROM orders WHERE id=?').bind(o.id)]);
+      return J({ok:1});
+    }
     if(c==='status'&&req.method==='POST'){
       if(!me.admin)return E('Not allowed.',403);
       if(!['new','quoted','designing','printing','shipped','done'].includes(body.status))return E('Bad status.');
