@@ -1,7 +1,7 @@
 pages_build_output_dir = "."
 compatibility_date = "2024-11-01"
- 
+
 [[d1_databases]]
-binding = "DB"
-database_name = "prolab"
-database_id = "PASTE_ID_FROM_wrangler_d1_create"
+binding = "prolaby"
+database_name = "prolaby"
+database_id = "37ec3308-6824-43dc-9032-2359a3978707"
