@@ -123,7 +123,7 @@ export async function onRequest({request:req,env,waitUntil}){
       return J({ok:1});
     }
     const m=await env.DB.prepare('SELECT id,is_admin,body,created FROM messages WHERE order_id=? ORDER BY id').bind(o.id).all();
-    const fl=await env.DB.prepare('SELECT id,name,size FROM attachments WHERE order_id=? ORDER BY id').bind(o.id).all();
+    let fl={results:[]};try{fl=await env.DB.prepare('SELECT id,name,size FROM attachments WHERE order_id=? ORDER BY id').bind(o.id).all();}catch{}
     return J({order:o,messages:m.results,files:fl.results,user:me});
   }
   return E('Not found.',404);
