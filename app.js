@@ -1,0 +1,313 @@
+const $ = s => document.querySelector(s), app = $('#app');
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = t => new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    let me = null, cfg = {}, poll;
+    async function api(p, body) {
+      const r = await fetch('/api/' + p, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json' }, body: body && JSON.stringify(body) });
+      const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Something went wrong.'); return d;
+    }
+    function nav() {
+      const n = $('#nav'); n.classList.remove('open');
+      n.innerHTML = `<a class="logo" href="#/"><img src="assets/logo/favicon.png" alt="" width="32" height="32">ProLab</a><button class="bg" id="bg" aria-label="Menu" aria-expanded="false"><span></span></button><div class="nl"><a class="l" href="#/models">Models</a>` +
+        (me ? `<a class="l" href="#/orders">${me.admin ? 'All requests' : 'My requests'}</a>${me.admin ? '<a class="l" href="#/add">Add model</a>' : ''}<a class="l" href="#" id="out">Sign out</a><a class="btn" href="#/new">New request</a>`
+          : `<a class="l" href="#/login">Sign in</a><a class="btn" href="#/new">Start a request</a>`) + '</div>';
+      $('#bg').onclick = () => { const o = n.classList.toggle('open'); $('#bg').setAttribute('aria-expanded', o); };
+      $('#out')?.addEventListener('click', async e => { e.preventDefault(); await api('auth/logout', {}); me = null; nav(); location.hash = '#/'; });
+    }
+    const DZ = '<div class="dz" tabindex="0" role="button"><p><b>Drop files here</b> or tap to choose<br><small>STL, 3MF, OBJ, STEP, images, PDF, ZIP. Up to 25 MB each, 10 files.</small></p><input type="file" multiple hidden accept=".stl,.3mf,.obj,.step,.stp,.png,.jpg,.jpeg,.webp,.pdf,.zip,.gcode"></div><ul class="fl2"></ul>';
+    ['dragover', 'drop'].forEach(ev => addEventListener(ev, e => e.preventDefault()));
+    function dropzone(root, list, cb, big) {
+      const dz = root.querySelector('.dz'), fi = root.querySelector('input[type=file]'), ul = root.querySelector('.fl2');
+      const draw = () => { ul.innerHTML = list.map((f, i) => `<li>${esc(f.name)} <small>${(f.size / 1048576).toFixed(1)} MB</small><button type="button" class="mini" data-i="${i}">Remove</button></li>`).join(''); cb && cb(); };
+      const add = fs => { for (const f of fs) { if (list.length >= 10) break; const lim = big && /\.zip$/i.test(f.name) ? 52428800 : 26214400; if (f.size > lim) { alert(f.name + ' is over ' + (lim >> 20) + ' MB.'); continue; } list.push(f); } draw(); };
+      dz.onclick = () => fi.click(); dz.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); } };
+      fi.onchange = () => { add(fi.files); fi.value = ''; };
+      ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('on'); }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('on'); }));
+      dz.addEventListener('drop', e => add(e.dataTransfer.files));
+      ul.onclick = e => { const b = e.target.closest('button'); if (b) { list.splice(+b.dataset.i, 1); draw(); } };
+    }
+    async function upload(id, list) { for (const f of list) { const r = await fetch(`/api/orders/${id}/files`, { method: 'POST', headers: { 'x-filename': encodeURIComponent(f.name), 'content-type': 'application/octet-stream' }, body: f }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Upload failed'); } }
+    const SH = ['M35 15h30c0 15-8 20-8 35s12 25 12 40H31c0-15 12-25 12-40S35 30 35 15z', 'M50 10L85 30V70L50 90L15 70V30z', 'M50 12a12 12 0 1 1 0 24a12 12 0 1 1 0-24zM30 90V55q0-18 20-18t20 18v35z', 'M12 80C12 40 38 20 60 25c10 2 12 12 26 10-2 15-10 20-20 22 10 15 5 28-5 33z', 'M12 55a38 32 0 0 1 76 0zM40 55h20v35H40z', 'M18 18h64v16H36v48H18z'];
+    const MAP = {};
+    const norm = m => (MAP[m.id] = { ...m, t: m.title, h: m.hours, w: m.walls, d: m.descr, img: JSON.parse(m.imgs || '[]'), stl: JSON.parse(m.stls || '[]'), tags: (m.tags || '').split(',').map(x => x.trim()).filter(Boolean), sh: m.id % 6, col: m.col || '#00ae42' });
+    const loadModels = async () => (await api('models')).models.map(norm);
+    const uid = () => Math.random().toString(36).slice(2, 7);
+    const art = (w, p = 'p') => { p += uid(); return `<svg viewBox="0 0 100 100" role="img" aria-label="${esc(w.t)}"><defs><pattern id="${p}" width="4" height="2.2" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#fff" opacity=".24"/></pattern><linearGradient id="${p}g" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient></defs><rect width="100" height="100" fill="#e9ece9"/><ellipse cx="50" cy="91" rx="34" ry="3.5" fill="#000" opacity=".12"/><path d="${SH[w.sh]}" fill="${w.col}"/><path d="${SH[w.sh]}" fill="url(#${p}g)"/><path d="${SH[w.sh]}" fill="url(#${p})"/></svg>`; };
+    const photo = (m, k = 0) => m.img[k] ? `<img src="${esc(m.img[k])}" alt="${esc(m.t)}" loading="lazy" onerror="imgFail(this,${m.id})">` : `<div class="fb">${art(m, 'f')}</div>`;
+    function imgFail(el, id) { const d = document.createElement('div'); d.className = 'fb'; d.innerHTML = art(MAP[id], 'f'); el.replaceWith(d); }
+    const tile = m => `<a class="it rv" href="#/model/${m.id}">${photo(m)}<div><b>${esc(m.t)}</b><br><small>${esc(m.mat)} · ${m.h} h print</small><br><small>${m.likes} likes · ${m.prints} made</small></div></a>`;
+    const home = () => app.innerHTML = `
+<section class="hero"><canvas class="topo" aria-hidden="true"></canvas><div class="w"><h1>Send us a file or an idea.<br>We print it.</h1>
+<p>Have a ready 3D file? Share a link and get a quote. Only have an idea for a figurine, a toy or a spare part? We model it with you, then print it.</p>
+<div class="bt"><a class="btn" href="#/new">Start a request</a> <a class="btn d" href="#/models">Browse models</a></div></div></section>
+<div class="mq" aria-hidden="true"><div>${'<span>PLA</span><span>PETG</span><span>ABS</span><span>TPU</span><span>Silk PLA</span><span>Translucent PETG</span><span>Carbon fibre nylon</span>'.repeat(2)}</div></div>
+<section class="sec"><div class="w"><div class="stats rv"><div><b data-k="o">0</b><span>requests received</span></div><div><b data-k="d">0</b><span>models designed for clients</span></div><div><b data-k="c">0</b><span>jobs shipped or done</span></div><div><b data-k="u">0</b><span>customers</span></div></div></div></section>
+<section class="sec alt"><div class="w"><h2 class="rv">Two ways to order</h2><p class="lead rv">Pick whichever matches what you already have.</p>
+<div class="grid"><div class="card rv"><div class="tag">You have a file</div><h3>Print only</h3><p>Send an STL, 3MF or OBJ link, choose material and quantity. We check the file and quote you.</p></div>
+<div class="card dark rv"><div class="tag">You have an idea</div><h3>Design and print</h3><p>Describe it or share reference photos. We build the 3D model, show it in chat and adjust until you like it.</p></div>
+<div class="card rv"><div class="tag">Not sure which material?</div><h3>Ask in the chat</h3><p>Tell us where the part will live, indoors, outdoors, in a car, and we will recommend one.</p></div></div></div></section>
+<section class="sec"><div class="w"><div style="display:flex;justify-content:space-between;align-items:end;flex-wrap:wrap;gap:12px"><h2 class="rv">Most popular</h2><a class="btn o" href="#/models">Browse all</a></div><br><div class="gal" id="hg"></div></div></section>
+<section class="sec alt"><div class="w"><h2 class="rv">How a request works</h2><div class="tl rv">
+<div class="row"><div class="d">Step 1</div><div><h3>Create an account and describe the job</h3><p>Sign in with email or Google, then fill in a short form.</p></div></div>
+<div class="row"><div class="d">Step 2</div><div><h3>Talk it through in the request chat</h3><p>We ask what we need: size, colours, where the part will be used.</p></div></div>
+<div class="row"><div class="d">Step 3</div><div><h3>Approve the quote and the model</h3><p>You get an email whenever we reply or the status changes.</p></div></div>
+<div class="row"><div class="d">Step 4</div><div><h3>We print and ship</h3><p>Follow the status from your requests page.</p></div></div></div></div></section>
+<section class="sec"><div class="w"><h2 class="rv">What clients say</h2><div class="grid">
+<div class="card q rv">“I sent a phone photo of a broken hinge. Two days later I had a part that fit first try.”<small>Andrei, Oradea</small></div>
+<div class="card q rv">“They modelled my daughter’s drawing as a figurine and showed me three versions in the chat.”<small>Ioana, Zalău</small></div>
+<div class="card q rv">“Ten prototype housings, quoted in the morning, delivered that week.”<small>Delta Mech</small></div></div></div></section>
+<section class="cta"><div class="w"><h2>Have something to make?</h2><a class="btn" href="#/new">Start a request</a></div></section>`;
+    function liveStats() { api('stats').then(d => document.querySelectorAll('.stats b[data-k]').forEach(b => { b.dataset.n = d[b.dataset.k] || 0; b.classList.add('cnt'); io.observe(b); })).catch(() => { }); }
+    function loadHome() { loadModels().then(ms => { const g = $('#hg'); if (!g) return; const top = [...ms].sort((a, b) => (b.views + b.ordered * 5) - (a.views + a.ordered * 5) || b.id - a.id).slice(0, 4); g.innerHTML = top.length ? top.map(tile).join('') : '<p>No models yet.</p>'; fx(); }).catch(() => { }); }
+    async function models() {
+      app.innerHTML = `<section class="ph"><canvas class="topo" aria-hidden="true"></canvas><div class="w"><h1>Premade models</h1><p>Ready to print, or tell us what to change.</p>${me?.admin ? '<br><a class="btn" href="#/add">Add a model</a>' : ''}</div></section>
+  <div class="w page"><div class="sb"><input id="q" type="search" placeholder="Search models, e.g. dragon" aria-label="Search models"><select id="so" aria-label="Sort"><option value="n">Newest</option><option value="l">Most liked</option><option value="p">Most made</option><option value="v">Most viewed</option></select></div><div class="fl" id="ct"></div><p id="rc" style="color:var(--mut)"></p><div class="gal" id="gl"></div></div>`;
+      let all = [], cat = 'All'; try { all = await loadModels(); } catch { }
+      $('#ct').innerHTML = ['All', ...new Set(all.map(m => m.cat))].map((c, i) => `<button class="${i ? '' : 'on'}">${esc(c)}</button>`).join('');
+      const show = () => {
+        const q = $('#q').value.trim().toLowerCase(), s = $('#so').value;
+        const l = all.filter(m => (cat === 'All' || m.cat === cat) && (!q || [m.t, m.cat, m.mat, m.d, m.tags.join(' ')].join(' ').toLowerCase().includes(q)));
+        l.sort((a, b) => s === 'l' ? b.likes - a.likes : s === 'p' ? b.prints - a.prints : s === 'v' ? b.views - a.views : b.id - a.id);
+        $('#rc').textContent = `${l.length} model${l.length == 1 ? '' : 's'}`; $('#gl').innerHTML = l.map(tile).join('') || '<p>No models match.</p>'; fx();
+      };
+      $('#q').oninput = show; $('#so').onchange = show;
+      $('#ct').onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.textContent;[...$('#ct').children].forEach(x => x.classList.toggle('on', x === b)); show(); };
+      show();
+    }
+    const load = src => new Promise((ok, no) => { if (document.querySelector(`script[src="${src}"]`)) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+    async function view3d(el, w, n) {
+      const url = w.stl[n], ext = url.split('?')[0].split('.').pop().toLowerCase(), N = w.stl.length;
+      const sw = N > 1 ? `<div class="sw"><button type="button" data-d="-1" aria-label="Previous model">‹</button><span>${n + 1} / ${N}</span><button type="button" data-d="1" aria-label="Next model">›</button></div>` : '';
+      const wire = () => el.querySelector('.sw')?.addEventListener('click', e => { const b = e.target.closest('button'); if (b) view3d(el, w, (n + +b.dataset.d + N) % N); });
+      if (ext === 'step' || ext === 'stp') { el.innerHTML = `<div style="padding:28px;text-align:center"><p><b>STEP files cannot be previewed in the browser.</b></p><a class="btn" href="${esc(url)}" download>Download ${ext.toUpperCase()} file</a></div>${sw}`; wire(); return; }
+      el.innerHTML = '<p style="padding:20px">Loading viewer…</p>'; const B = 'https://cdn.jsdelivr.net/npm/three@0.128.0/';
+      try {
+        await load(B + 'build/three.min.js'); await load(B + 'examples/js/controls/OrbitControls.js');
+        if (ext === '3mf') { await load(B + 'examples/js/libs/fflate.min.js'); await load(B + 'examples/js/loaders/3MFLoader.js'); }
+        else await load(B + 'examples/js/loaders/' + (ext === 'obj' ? 'OBJLoader' : 'STLLoader') + '.js');
+      }
+      catch { el.innerHTML = '<p style="padding:20px">Could not load the 3D viewer.</p>' + sw; wire(); return; }
+      el.innerHTML = '<canvas style="width:100%;height:100%;display:block"></canvas><small class="vn"></small>' + sw; wire();
+      const cv = el.querySelector('canvas'), R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }), S = new THREE.Scene(), C = new THREE.PerspectiveCamera(40, 1, .1, 2000), note = el.querySelector('.vn');
+      R.setPixelRatio(devicePixelRatio); S.add(new THREE.HemisphereLight(0xffffff, 0x666666, 1)); const L = new THREE.DirectionalLight(0xffffff, .8); L.position.set(3, 5, 4); S.add(L);
+      const mat = new THREE.MeshStandardMaterial({ color: w.col, roughness: .5, metalness: .1, side: THREE.DoubleSide });
+      let obj, real = true;
+      try {
+        const ld = ext === '3mf' ? new THREE.ThreeMFLoader() : ext === 'obj' ? new THREE.OBJLoader() : new THREE.STLLoader();
+        const res = await new Promise((ok, no) => ld.load(url, ok, undefined, no));
+        if (ext === 'stl') { res.computeVertexNormals(); obj = new THREE.Mesh(res, mat); }
+        else { obj = res; if (ext === 'obj') obj.traverse(o => { if (o.isMesh) o.material = mat; }); }
+        note.textContent = 'Drag to rotate, scroll to zoom';
+      } catch { real = false; obj = new THREE.Mesh(new THREE.TorusKnotGeometry(1, .35, 160, 24), mat); note.textContent = 'Demo shape. The 3D file could not be loaded.'; }
+      if (real && ext !== 'obj') obj.rotation.x = -Math.PI / 2;
+      const pv = new THREE.Group(); pv.add(obj); S.add(pv);
+      const bx = new THREE.Box3().setFromObject(pv); obj.position.sub(bx.getCenter(new THREE.Vector3()));
+      const rad = bx.getSize(new THREE.Vector3()).length() / 2 || 1; C.near = rad / 100; C.far = rad * 100; C.position.set(0, rad * .7, rad * 2.6);
+      const O = new THREE.OrbitControls(C, cv); O.enableDamping = true; O.autoRotate = true; O.autoRotateSpeed = 1.5;
+      const rs = () => { R.setSize(el.clientWidth, el.clientHeight, false); C.aspect = el.clientWidth / el.clientHeight; C.updateProjectionMatrix(); }; rs(); addEventListener('resize', rs);
+      const tick = () => { if (!cv.isConnected) return; O.update(); R.render(S, C); requestAnimationFrame(tick); }; tick();
+    }
+    async function modelPage(id) {
+      let m; try { m = norm((await api('models/' + id)).model); } catch { location.hash = '#/models'; return; }
+      try { if (!sessionStorage.getItem('v' + id)) { sessionStorage.setItem('v' + id, '1'); api(`models/${id}/view`, {}).catch(() => { }); m.views++; } } catch { }
+      app.innerHTML = `<div class="w page"><p><a href="#/models">Models</a> / ${esc(m.cat)}</p><div class="wp"><div><div class="stage" id="st"></div>
+  <div class="th" id="th">${m.img.map((_, k) => `<button data-k="${k}">${photo(m, k)}</button>`).join('')}${m.stl.length ? '<button data-k="m0" class="d3">3D model</button>' : ''}</div></div>
+  <aside><h1 style="font-size:2rem">${esc(m.t)}</h1><p style="color:var(--mut)">Made for ${esc(m.who)}</p>
+  <div class="stats s3" style="grid-template-columns:repeat(3,1fr)"><div style="padding:14px"><b style="font-size:1.3rem">${m.views}</b><span>views</span></div><div style="padding:14px"><b style="font-size:1.3rem" id="lkc">${m.likes}</b><span>likes</span></div><div style="padding:14px"><b style="font-size:1.3rem">${m.prints}</b><span>made</span></div></div><br>
+  <a class="btn" href="#/new" id="mk" style="width:100%;text-align:center">Order this model</a>
+  <button class="btn o" id="lk" style="width:100%;margin-top:10px">${m.liked ? 'Liked' : 'Like'}</button>${me?.admin ? `<a class="btn o" href="#/edit/${id}" style="width:100%;margin-top:10px;text-align:center">Edit model</a><button class="btn o" id="dm" style="width:100%;margin-top:10px">Delete model</button>` : ''}</aside></div>
+  <div class="wp" style="margin-top:36px"><div><h3>Description</h3><p>${esc(m.d) || '-'}</p><h3>Tags</h3><p>${m.tags.map(t => `<span class="st">${esc(t)}</span> `).join('') || '-'}</p></div>
+  <aside><h3>Print settings</h3><table><tr><td>Material</td><td>${esc(m.mat)}</td></tr><tr><td>Layer height</td><td>${esc(m.lay)}</td></tr><tr><td>Infill</td><td>${esc(m.inf)}</td></tr><tr><td>Walls</td><td>${m.w}</td></tr><tr><td>Supports</td><td>${esc(m.sup)}</td></tr><tr><td>Print time</td><td>${m.h} h</td></tr></table></aside></div></div>`;
+      const st = $('#st'), show = k => { [...$('#th').children].forEach(b => b.classList.toggle('on', b.dataset.k == k)); String(k)[0] === 'm' ? view3d(st, m, +k.slice(1)) : st.innerHTML = photo(m, +k); };
+      $('#th').onclick = e => { const b = e.target.closest('button'); b && show(b.dataset.k); }; show(0);
+      $('#mk').onclick = () => { window.pre = 'Something like: ' + m.t; window.preModel = m.id; };
+      $('#lk').onclick = async () => { if (!me) { location.hash = '#/login'; return; } try { const r = await api(`models/${id}/like`, {}); $('#lk').textContent = r.liked ? 'Liked' : 'Like'; $('#lkc').textContent = r.likes; } catch (x) { alert(x.message); } };
+      $('#dm')?.addEventListener('click', async () => { if (!confirm('Delete this model and its files? This cannot be undone.')) return; try { await api(`models/${id}/delete`, {}); location.hash = '#/models'; } catch (x) { alert(x.message); } });
+    }
+    const DZ2 = (t, a, n = 'Up to 25 MB each') => `<div class="dz" tabindex="0" role="button"><p><b>${t}</b> or tap to choose<br><small>${n}</small></p><input type="file" multiple hidden accept="${a}"></div><ul class="fl2"></ul>`;
+    async function upModel(id, list, kind) { for (const f of list) { const r = await fetch(`/api/models/${id}/files`, { method: 'POST', headers: { 'x-filename': encodeURIComponent(f.name), 'x-kind': kind, 'content-type': 'application/octet-stream' }, body: f }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Upload failed'); } }
+    function tagInput(known, init) {
+      const tags = [], inp = $('#tgi'), sg = $('#sg'); let hi = -1, opts = [];
+      const nm = s => s.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 30);
+      const chips = () => { $('#chips').innerHTML = tags.map((t, i) => `<span class="chip">${esc(t)}<button type="button" data-i="${i}" aria-label="Remove ${esc(t)}">×</button></span>`).join(''); };
+      const draw = () => { sg.innerHTML = opts.map((o, i) => `<li data-t="${esc(o.t)}" class="${i === hi ? 'on' : ''}">${o.n ? `Add “${esc(o.t)}” as a new tag` : esc(o.t)}</li>`).join(''); sg.hidden = !opts.length; };
+      const sug = () => {
+        const q = nm(inp.value); opts = known.filter(t => !tags.includes(t) && t.includes(q)).slice(0, 6).map(t => ({ t }));
+        if (q && !known.includes(q) && !tags.includes(q)) opts.push({ t: q, n: 1 }); hi = -1; draw();
+      };
+      const add = t => { t = nm(t); if (t && !tags.includes(t) && tags.length < 12) tags.push(t); inp.value = ''; chips(); sug(); };
+      init.forEach(t => { t = nm(t); t && !tags.includes(t) && tags.push(t); }); chips();
+      inp.oninput = () => { if (inp.value.includes(',')) { const ps = inp.value.split(','); inp.value = ''; ps.forEach(add); return; } sug(); };
+      inp.onfocus = sug; inp.onblur = () => { if (inp.value.trim()) add(inp.value); sg.hidden = true; };
+      inp.onkeydown = e => {
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && opts.length) { e.preventDefault(); hi = (hi + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length; draw(); }
+        else if (e.key === 'Enter') { e.preventDefault(); add(hi >= 0 && opts[hi] ? opts[hi].t : inp.value); }
+        else if (e.key === 'Backspace' && !inp.value && tags.length) { tags.pop(); chips(); sug(); }
+        else if (e.key === 'Escape') sg.hidden = true;
+      };
+      sg.onmousedown = e => { e.preventDefault(); const li = e.target.closest('li'); if (li) add(li.dataset.t); };
+      $('#chips').onclick = e => { const b = e.target.closest('button'); if (b) { tags.splice(+b.dataset.i, 1); chips(); } };
+      return { get: () => { if (inp.value.trim()) add(inp.value); return tags; } };
+    }
+    async function addModel(id) {
+      if (!me?.admin) { location.hash = '#/'; return; }
+      let v = { title: '', cat: 'Figurines', mat: 'PLA', hours: 4, who: 'ProLab', descr: '', lay: '0.2 mm', inf: '15%', walls: 3, sup: 'None', tags: '', col: '#00ae42' };
+      if (id) { try { v = (await api('models/' + id)).model; } catch { location.hash = '#/models'; return; } }
+      const a = x => esc(x ?? ''); let known = [];
+      try { const cn = {}; (await loadModels()).forEach(m => m.tags.forEach(t => { t = t.toLowerCase(); cn[t] = (cn[t] || 0) + 1; })); known = Object.keys(cn).sort((x, y) => cn[y] - cn[x] || x.localeCompare(y)); } catch { }
+      app.innerHTML = `<div class="w page"><div style="max-width:680px"><h2>${id ? 'Edit model' : 'Add a premade model'}</h2><form id="f">
+  <label for="t">Title</label><input id="t" required maxlength="120" value="${a(v.title)}">
+  <div class="g2"><div><label for="c">Category</label><input id="c" list="cl" value="${a(v.cat)}" required><datalist id="cl"><option>Figurines</option><option>Functional</option><option>Prototypes</option></datalist></div><div><label for="m">Material</label><input id="m" value="${a(v.mat)}"></div></div>
+  <div class="g2"><div><label for="h">Print time (hours)</label><input id="h" type="number" min="0" step="0.5" value="${a(v.hours)}"></div><div><label for="wh">Made for</label><input id="wh" value="${a(v.who)}"></div></div>
+  <label for="d">Description</label><textarea id="d" rows="4">${a(v.descr)}</textarea>
+  <div class="g2"><div><label for="ly">Layer height</label><input id="ly" value="${a(v.lay)}"></div><div><label for="in">Infill</label><input id="in" value="${a(v.inf)}"></div></div>
+  <div class="g2"><div><label for="wl">Walls</label><input id="wl" type="number" min="1" value="${a(v.walls)}"></div><div><label for="su">Supports</label><input id="su" value="${a(v.sup)}"></div></div>
+  <label for="tgi">Tags</label><div class="tg" id="tgw"><span id="chips"></span><input id="tgi" autocomplete="off" placeholder="Search or add a tag…"></div><ul class="sg" id="sg" hidden></ul>
+  <label for="co">Placeholder colour (used if there is no photo)</label><input id="co" type="color" value="${a(v.col || '#00ae42')}" style="height:44px;padding:4px">
+  <label>${id ? 'Add more photos' : 'Photos'}</label><div id="pz">${DZ2('Drop photos here', '.png,.jpg,.jpeg,.webp')}</div>
+  <label>${id ? 'Add more 3D files' : '3D files'} (STL, 3MF, OBJ, STEP or ZIP)</label><div id="sz">${DZ2('Drop 3D files or a ZIP here', '.stl,.3mf,.obj,.step,.stp,.zip', 'Up to 25 MB each. A ZIP (up to 50 MB) is unpacked for you.')}</div>
+  <div class="err" id="er" role="alert"></div><button class="btn" id="sb">${id ? 'Save changes' : 'Publish model'}</button></form></div></div>`;
+      const ph = [], sl = []; dropzone($('#pz'), ph); dropzone($('#sz'), sl, null, true); const tg = tagInput(known, (v.tags || '').split(','));
+      $('#f').onsubmit = async e => {
+        e.preventDefault(); $('#er').textContent = ''; const sb = $('#sb'); sb.disabled = true;
+        const body = { title: $('#t').value, cat: $('#c').value, mat: $('#m').value, hours: +$('#h').value, who: $('#wh').value, descr: $('#d').value, lay: $('#ly').value, inf: $('#in').value, walls: +$('#wl').value, sup: $('#su').value, tags: tg.get().join(','), col: $('#co').value }; let mid = id;
+        try { if (id) await api(`models/${id}/update`, body); else mid = (await api('models', body)).id; }
+        catch (x) { $('#er').textContent = x.message; sb.disabled = false; return; }
+        try { await upModel(mid, ph, 'img'); await upModel(mid, sl, 'stl'); } catch (x) { alert('Saved, but a file did not upload: ' + x.message); }
+        location.hash = '#/model/' + mid;
+      };
+    }
+    let raf;
+    function topo() {
+      cancelAnimationFrame(raf); const cv = document.querySelector('canvas.topo'); if (!cv) return;
+      const x = cv.getContext('2d'), S = 18; let t = 0, W, H, C, R;
+      const rs = () => { W = cv.width = cv.offsetWidth; H = cv.height = cv.offsetHeight; C = Math.ceil(W / S) + 1; R = Math.ceil(H / S) + 1; }; rs();
+      const f = (i, j) => Math.sin(i * .17 + t * .5) + Math.sin(j * .2 - t * .4) + Math.sin((i + j) * .1 + t * .3) + Math.sin(Math.hypot(i - C * .65, j - R * .4) * .22 - t * .6);
+      const draw = () => {
+        x.clearRect(0, 0, W, H); const F = []; for (let j = 0; j < R; j++) { F[j] = []; for (let i = 0; i < C; i++)F[j][i] = f(i, j); }
+        for (let L = -3.5; L <= 3.5; L += .5) {
+          x.strokeStyle = `rgba(0,174,66,${Number.isInteger(L * 1) ? .4 : .16})`; x.beginPath();
+          for (let j = 0; j < R - 1; j++)for (let i = 0; i < C - 1; i++) {
+            const v = [F[j][i], F[j][i + 1], F[j + 1][i + 1], F[j + 1][i]], c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], p = [];
+            for (let e = 0; e < 4; e++) { const a = v[e], b = v[(e + 1) % 4]; if ((a < L) !== (b < L)) { const k = (L - a) / (b - a), A = c[e], B = c[(e + 1) % 4]; p.push([(A[0] + (B[0] - A[0]) * k) * S, (A[1] + (B[1] - A[1]) * k) * S]); } }
+            if (p.length >= 2) { x.moveTo(...p[0]); x.lineTo(...p[1]); } if (p.length === 4) { x.moveTo(...p[2]); x.lineTo(...p[3]); }
+          }
+          x.stroke();
+        }
+      };
+      const loop = () => { t += .01; draw(); raf = requestAnimationFrame(loop); };
+      addEventListener('resize', rs); matchMedia('(prefers-reduced-motion:reduce)').matches ? draw() : loop();
+    }
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (!e.isIntersecting) return; io.unobserve(e.target); e.target.classList.add('in');
+      if (e.target.classList.contains('cnt')) {
+        const n = +e.target.dataset.n, d = n % 1, t0 = performance.now(), s = '';
+        const st = t => { const k = Math.min(1, (t - t0) / 1400), v = n * (1 - Math.pow(1 - k, 3)); e.target.textContent = (d ? v.toFixed(1) : Math.round(v).toLocaleString()) + (k < 1 ? '' : s); k < 1 && requestAnimationFrame(st); }; requestAnimationFrame(st);
+      }
+    }), { threshold: .15 });
+    function fx() { topo(); document.querySelectorAll('.rv:not(.in),.cnt').forEach(e => io.observe(e)); }
+    function login() {
+      app.innerHTML = `<div class="w"><div class="narrow"><div class="tabs"><button class="on" data-m="login">Sign in</button><button data-m="register">Create account</button></div>
+  <form id="f"><div id="nm" hidden><label for="n">Name</label><input id="n" autocomplete="name"></div>
+  <label for="e">Email</label><input id="e" type="email" required autocomplete="email">
+  <label for="p">Password</label><input id="p" type="password" required minlength="8" autocomplete="current-password">
+  <div class="err" id="er" role="alert"></div><button class="btn" style="width:100%" id="go">Sign in</button></form>
+  <div class="or" ${cfg.google ? '' : 'hidden'}>or continue with</div><div id="gb" style="display:flex;justify-content:center"></div></div></div>`;
+      let mode = 'login';
+      app.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+        mode = b.dataset.m; app.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+        $('#nm').hidden = mode === 'login'; $('#go').textContent = mode === 'login' ? 'Sign in' : 'Create account';
+      });
+      const done = async () => { me = (await api('me')).user; nav(); location.hash = '#/orders'; };
+      $('#f').onsubmit = async e => {
+        e.preventDefault(); $('#er').textContent = '';
+        try { await api('auth/' + mode, { email: $('#e').value, password: $('#p').value, name: $('#n').value }); await done(); } catch (x) { $('#er').textContent = x.message; }
+      };
+      if (cfg.google && window.google?.accounts) initG(); else if (cfg.google) setTimeout(() => window.google?.accounts && initG(), 800);
+      function initG() {
+        google.accounts.id.initialize({ client_id: cfg.google, callback: async r => { try { await api('auth/google', { credential: r.credential }); await done(); } catch (x) { $('#er').textContent = x.message; } } });
+        google.accounts.id.renderButton($('#gb'), { theme: 'outline', size: 'large', shape: 'rectangular', width: 320, text: 'continue_with' });
+      }
+    }
+    let hideDone = false; try { hideDone = localStorage.getItem('hd') === '1'; } catch { }
+    async function orders() {
+      app.innerHTML = '<div class="w page"><p>Loading…</p></div>';
+      const all = (await api('orders')).orders, adm = me.admin;
+      const draw = () => {
+        const nd = all.filter(o => o.status === 'done').length, list = adm && hideDone ? all.filter(o => o.status !== 'done') : all;
+        app.innerHTML = `<div class="w page"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px"><h2 style="margin:0">${adm ? 'All requests' : 'My requests'}</h2><div>${adm && nd ? `<button class="btn o" id="hd">${hideDone ? 'Show' : 'Hide'} done (${nd})</button> ` : ''}<a class="btn" href="#/new">New request</a></div></div>
+    ${list.length ? `<div style="overflow-x:auto"><table><tr><th>#</th><th>Title</th><th class="hm">Type</th>${adm ? '<th>Customer</th>' : ''}<th>Status</th><th class="hm">Created</th>${adm ? '<th></th>' : ''}</tr>
+    ${list.map(o => `<tr class="go ${o.status === 'done' ? 'dn' : ''}" tabindex="0" data-id="${o.id}"><td>${o.id}</td><td>${esc(o.title)}</td><td class="hm">${o.kind === 'design' ? 'Design + print' : 'Print only'}</td>${adm ? `<td>${esc(o.email)}</td>` : ''}<td><span class="st ${o.status}">${o.status}</span></td><td class="hm">${fmt(o.created)}</td>${adm ? `<td style="white-space:nowrap">${o.status !== 'done' ? '<button class="mini" data-a="done">Done</button> ' : ''}<button class="mini x" data-a="del">Delete</button></td>` : ''}</tr>`).join('')}</table></div>`
+            : `<div class="card"><h3>${all.length ? 'Everything is done' : 'No requests yet'}</h3><p>${all.length ? 'Completed requests are hidden.' : 'Create your first request and we will get back to you in the chat.'}</p></div>`}</div>`;
+        $('#hd')?.addEventListener('click', () => { hideDone = !hideDone; try { localStorage.setItem('hd', hideDone ? '1' : '0'); } catch { } draw(); });
+        app.querySelectorAll('tr.go').forEach(r => {
+          const id = +r.dataset.id, g = () => location.hash = '#/order/' + id; r.onclick = g; r.onkeydown = e => e.key === 'Enter' && e.target === r && g();
+          r.querySelectorAll('.mini').forEach(b => b.onclick = async e => {
+            e.stopPropagation();
+            try {
+              if (b.dataset.a === 'done') { await api(`orders/${id}/status`, { status: 'done' }); all.find(o => o.id === id).status = 'done'; }
+              else { if (!confirm(`Delete request #${id} and its messages? This cannot be undone.`)) return; await api(`orders/${id}/delete`, {}); all.splice(all.findIndex(o => o.id === id), 1); }
+              draw();
+            } catch (x) { alert(x.message); }
+          });
+        });
+      }; draw();
+    }
+    function newOrder() {
+      app.innerHTML = `<div class="w page"><div style="max-width:620px"><h2>New request</h2>
+  <form id="f"><label for="k">What do you need?</label><select id="k"><option value="print">I have a 3D file, print it</option><option value="design">I have an idea, design and print it</option></select>
+  <label for="t">Title</label><input id="t" required maxlength="120" placeholder="e.g. Dragon figurine, 12 cm">
+  <label for="d">Describe it</label><textarea id="d" rows="5" placeholder="Size, colours, what it is used for. For designs, describe the shape or link reference photos."></textarea>
+  <label for="l">Link to file or reference images (optional)</label><input id="l" type="url" placeholder="https://drive.google.com/…">
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px"><div><label for="m">Material</label><select id="m"><option>PLA</option><option>PETG</option><option>ABS</option><option>TPU</option><option>Not sure</option></select></div>
+  <div><label for="q">Quantity</label><input id="q" type="number" min="1" value="1"></div></div>
+  <label>Files (optional)</label>${DZ}<div class="err" id="er" role="alert"></div><button class="btn" id="sb">Send request</button></form></div></div>`;
+      $('#t').value = window.pre || ''; window.pre = '';
+      const files = []; dropzone(app, files);
+      $('#f').onsubmit = async e => {
+        e.preventDefault(); $('#er').textContent = ''; const sb = $('#sb'); sb.disabled = true; sb.textContent = 'Sending…'; let r;
+        try { r = await api('orders', { kind: $('#k').value, title: $('#t').value, details: $('#d').value, link: $('#l').value, material: $('#m').value, qty: $('#q').value, model: window.preModel || null }); window.preModel = null; }
+        catch (x) { $('#er').textContent = x.message; sb.disabled = false; sb.textContent = 'Send request'; return; }
+        try { await upload(r.id, files); } catch (x) { alert('Your request was created, but a file did not upload: ' + x.message + '. You can add it again on the request page.'); }
+        location.hash = '#/order/' + r.id;
+      };
+    }
+    async function orderPage(id) {
+      let d; try { d = await api('orders/' + id); } catch (x) { app.innerHTML = `<div class="w page"><p>${esc(x.message)}</p></div>`; return; }
+      const o = d.order, adm = me.admin;
+      app.innerHTML = `<div class="w page"><p><a href="#/orders">Back to requests</a></p><h2>#${o.id} ${esc(o.title)}</h2><div class="two">
+  <div class="card"><dl><dt>Status</dt><dd><span class="st ${o.status}" id="stb">${o.status}</span></dd>
+  ${adm ? `<dt>Change status</dt><dd><select id="ss">${['new', 'quoted', 'designing', 'printing', 'shipped', 'done'].map(s => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select></dd><dt>Customer</dt><dd>${esc(o.email)}</dd><dd style="margin-top:14px"><button class="btn" id="md">Mark as done</button> <button class="btn o" id="rm">Delete request</button></dd>` : ''}
+  <dt>Type</dt><dd>${o.kind === 'design' ? 'Design and print' : 'Print only'}</dd><dt>Material / quantity</dt><dd>${esc(o.material)} × ${o.qty}</dd>
+  <dt>Details</dt><dd>${esc(o.details) || '-'}</dd>${o.link ? `<dt>Link</dt><dd><a href="${esc(o.link)}" target="_blank" rel="noopener">${esc(o.link)}</a></dd>` : ''}<dt>Created</dt><dd>${fmt(o.created)}</dd><dt>Files</dt><dd id="fls"></dd></dl><div style="margin-top:14px" id="up">${DZ}<button class="btn o" id="ub" hidden>Upload files</button></div></div>
+  <div class="chat"><div class="log" id="log" aria-live="polite"></div><form id="cf"><input id="ci" placeholder="${adm ? 'Reply to the customer' : 'Ask a question or add details'}" maxlength="2000" autocomplete="off"><button class="btn">Send</button></form></div></div></div>`;
+      const draw = m => {
+        const L = $('#log'), end = L.scrollTop + L.clientHeight >= L.scrollHeight - 40;
+        L.innerHTML = m.length ? m.map(x => `<div class="msg ${x.is_admin ? 'team' : ''} ${!!x.is_admin === adm ? 'me' : ''}"><small>${x.is_admin ? 'ProLab' : 'Customer'} · ${fmt(x.created)}</small>${esc(x.body)}</div>`).join('')
+          : '<p style="color:#6a6a6a">No messages yet. Tell us what you would like to change or ask.</p>'; if (end) L.scrollTop = L.scrollHeight;
+      };
+      draw(d.messages); $('#log').scrollTop = 1e6;
+      $('#cf').onsubmit = async e => {
+        e.preventDefault(); const v = $('#ci').value.trim(); if (!v) return; $('#ci').value = '';
+        try { await api(`orders/${id}/messages`, { body: v }); draw((await api('orders/' + id)).messages); $('#log').scrollTop = 1e6; } catch (x) { alert(x.message); }
+      };
+      $('#ss')?.addEventListener('change', async e => { await api(`orders/${id}/status`, { status: e.target.value }); $('#stb').textContent = e.target.value; $('#stb').className = 'st ' + e.target.value; });
+      const drawFiles = f => { $('#fls').innerHTML = f.length ? f.map(x => `<a href="/api/files/${x.id}">${esc(x.name)}</a> <small>${(x.size / 1048576).toFixed(1)} MB</small>`).join('<br>') : '-'; }; drawFiles(d.files || []);
+      const nf = []; dropzone($('#up'), nf, () => { $('#ub').hidden = !nf.length; });
+      $('#ub').onclick = async () => { const b = $('#ub'); b.disabled = true; try { await upload(id, nf); nf.length = 0; $('#up .fl2').innerHTML = ''; b.hidden = true; drawFiles((await api('orders/' + id)).files); } catch (x) { alert(x.message); } b.disabled = false; };
+      $('#md')?.addEventListener('click', async () => { await api(`orders/${id}/status`, { status: 'done' }); $('#ss').value = 'done'; $('#stb').textContent = 'done'; $('#stb').className = 'st done'; });
+      $('#rm')?.addEventListener('click', async () => { if (!confirm('Delete this request and its messages? This cannot be undone.')) return; try { await api(`orders/${id}/delete`, {}); location.hash = '#/orders'; } catch (x) { alert(x.message); } });
+      poll = setInterval(async () => { try { draw((await api('orders/' + id)).messages); } catch { } }, 5000);
+    }
+    async function route() {
+      clearInterval(poll); $('#nav').classList.remove('open'); const [p, id] = (location.hash.slice(2) || '').split('/');
+      if (['orders', 'new', 'order', 'add', 'edit'].includes(p) && !me) { location.hash = '#/login'; return; }
+      const r = { '': home, models, gallery: models, model: () => modelPage(+id), work: () => modelPage(+id), add: addModel, edit: () => addModel(+id), login, orders, new: newOrder, order: () => orderPage(id) }; (r[p] || home)(); scrollTo(0, 0); fx(); if (!p) { liveStats(); loadHome(); }
+    }
+    addEventListener('hashchange', route);
+    (async () => {
+      try { cfg = await api('config'); me = (await api('me')).user; } catch { }
+      if (cfg.google) { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; document.head.appendChild(s); }
+      nav(); route();
+    })();
