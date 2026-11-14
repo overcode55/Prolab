@@ -147,7 +147,7 @@ const home=()=>app.innerHTML=`
 <div class="grid"><div class="card rv"><div class="tag">You have a file</div><h3>Print only</h3><p>Send an STL, 3MF or OBJ link, choose material and quantity. We check the file and quote you.</p></div>
 <div class="card dark rv"><div class="tag">You have an idea</div><h3>Design and print</h3><p>Describe it or share reference photos. We build the 3D model, show it in chat and adjust until you like it.</p></div>
 <div class="card rv"><div class="tag">Not sure which material?</div><h3>Ask in the chat</h3><p>Tell us where the part will live, indoors, outdoors, in a car, and we will recommend one.</p></div></div></div></section>
-<section class="sec"><div class="w"><div style="display:flex;justify-content:space-between;align-items:end;flex-wrap:wrap;gap:12px"><h2 class="rv">Premade models</h2><a class="btn o" href="#/models">Browse all</a></div><br><div class="gal" id="hg"></div></div></section>
+<section class="sec"><div class="w"><div style="display:flex;justify-content:space-between;align-items:end;flex-wrap:wrap;gap:12px"><h2 class="rv">Most popular</h2><a class="btn o" href="#/models">Browse all</a></div><br><div class="gal" id="hg"></div></div></section>
 <section class="sec alt"><div class="w"><h2 class="rv">How a request works</h2><div class="tl rv">
 <div class="row"><div class="d">Step 1</div><div><h3>Create an account and describe the job</h3><p>Sign in with email or Google, then fill in a short form.</p></div></div>
 <div class="row"><div class="d">Step 2</div><div><h3>Talk it through in the request chat</h3><p>We ask what we need: size, colours, where the part will be used.</p></div></div>
@@ -159,9 +159,9 @@ const home=()=>app.innerHTML=`
 <div class="card q rv">“Ten prototype housings, quoted in the morning, delivered that week.”<small>Delta Mech</small></div></div></div></section>
 <section class="cta"><div class="w"><h2>Have something to make?</h2><a class="btn" href="#/new">Start a request</a></div></section>`;
 function liveStats(){api('stats').then(d=>document.querySelectorAll('.stats b[data-k]').forEach(b=>{b.dataset.n=d[b.dataset.k]||0;b.classList.add('cnt');io.observe(b);})).catch(()=>{});}
-function loadHome(){loadModels().then(ms=>{const g=$('#hg');if(!g)return;g.innerHTML=ms.length?ms.slice(0,6).map(tile).join(''):'<p>No models yet.</p>';fx();}).catch(()=>{});}
+function loadHome(){loadModels().then(ms=>{const g=$('#hg');if(!g)return;const top=[...ms].sort((a,b)=>(b.views+b.ordered*5)-(a.views+a.ordered*5)||b.id-a.id).slice(0,4);g.innerHTML=top.length?top.map(tile).join(''):'<p>No models yet.</p>';fx();}).catch(()=>{});}
 async function models(){
-  app.innerHTML=`<section class="ph"><canvas class="topo" aria-hidden="true"></canvas><div class="w"><h1>Premade models</h1><p>Ready to print, or tell us what to change.</p>${me?.admin?'<br><a class="btn" href="#/add">Add a model</a>':''}</div></section>
+  app.innerHTML=`<section class="ph"><canvas class="topo" aria-hidden="true"></canvas><div class="w"><h1>Premade models</h1><p>Ready to print, or tell us what to change.</p>${me?.admin?'<br><a class="btn" href="#/add">Add a model</a> <a class="btn d" href="#/import">Import ZIP</a>':''}</div></section>
   <div class="w page"><div class="sb"><input id="q" type="search" placeholder="Search models, e.g. dragon" aria-label="Search models"><select id="so" aria-label="Sort"><option value="n">Newest</option><option value="l">Most liked</option><option value="p">Most made</option><option value="v">Most viewed</option></select></div><div class="fl" id="ct"></div><p id="rc" style="color:var(--mut)"></p><div class="gal" id="gl"></div></div>`;
   let all=[],cat='All';try{all=await loadModels();}catch{}
   $('#ct').innerHTML=['All',...new Set(all.map(m=>m.cat))].map((c,i)=>`<button class="${i?'':'on'}">${esc(c)}</button>`).join('');
@@ -198,7 +198,7 @@ async function modelPage(id){
   <aside><h1 style="font-size:2rem">${esc(m.t)}</h1><p style="color:var(--mut)">Made for ${esc(m.who)}</p>
   <div class="stats s3" style="grid-template-columns:repeat(3,1fr)"><div style="padding:14px"><b style="font-size:1.3rem">${m.views}</b><span>views</span></div><div style="padding:14px"><b style="font-size:1.3rem" id="lkc">${m.likes}</b><span>likes</span></div><div style="padding:14px"><b style="font-size:1.3rem">${m.prints}</b><span>made</span></div></div><br>
   <a class="btn" href="#/new" id="mk" style="width:100%;text-align:center">Order this model</a>
-  <button class="btn o" id="lk" style="width:100%;margin-top:10px">${m.liked?'Liked':'Like'}</button>${me?.admin?'<button class="btn o" id="dm" style="width:100%;margin-top:10px">Delete model</button>':''}</aside></div>
+  <button class="btn o" id="lk" style="width:100%;margin-top:10px">${m.liked?'Liked':'Like'}</button>${me?.admin?`<a class="btn o" href="#/edit/${id}" style="width:100%;margin-top:10px;text-align:center">Edit model</a><button class="btn o" id="dm" style="width:100%;margin-top:10px">Delete model</button>`:''}</aside></div>
   <div class="wp" style="margin-top:36px"><div><h3>Description</h3><p>${esc(m.d)||'-'}</p><h3>Tags</h3><p>${m.tags.map(t=>`<span class="st">${esc(t)}</span> `).join('')||'-'}</p></div>
   <aside><h3>Print settings</h3><table><tr><td>Material</td><td>${esc(m.mat)}</td></tr><tr><td>Layer height</td><td>${esc(m.lay)}</td></tr><tr><td>Infill</td><td>${esc(m.inf)}</td></tr><tr><td>Walls</td><td>${m.w}</td></tr><tr><td>Supports</td><td>${esc(m.sup)}</td></tr><tr><td>Print time</td><td>${m.h} h</td></tr></table></aside></div></div>`;
   const st=$('#st'),show=k=>{[...$('#th').children].forEach(b=>b.classList.toggle('on',b.dataset.k==k));String(k)[0]==='m'?view3d(st,m,+k.slice(1)):st.innerHTML=photo(m,+k);};
@@ -209,26 +209,47 @@ async function modelPage(id){
 }
 const DZ2=(t,a)=>`<div class="dz" tabindex="0" role="button"><p><b>${t}</b> or tap to choose<br><small>Up to 25 MB each</small></p><input type="file" multiple hidden accept="${a}"></div><ul class="fl2"></ul>`;
 async function upModel(id,list,kind){for(const f of list){const r=await fetch(`/api/models/${id}/files`,{method:'POST',headers:{'x-filename':encodeURIComponent(f.name),'x-kind':kind,'content-type':'application/octet-stream'},body:f});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||'Upload failed');}}
-function addModel(){
+async function addModel(id){
   if(!me?.admin){location.hash='#/';return;}
-  app.innerHTML=`<div class="w page"><div style="max-width:680px"><h2>Add a premade model</h2><form id="f">
-  <label for="t">Title</label><input id="t" required maxlength="120">
-  <div class="g2"><div><label for="c">Category</label><input id="c" list="cl" value="Figurines" required><datalist id="cl"><option>Figurines</option><option>Functional</option><option>Prototypes</option></datalist></div><div><label for="m">Material</label><input id="m" value="PLA"></div></div>
-  <div class="g2"><div><label for="h">Print time (hours)</label><input id="h" type="number" min="0" step="0.5" value="4"></div><div><label for="wh">Made for</label><input id="wh" value="ProLab"></div></div>
-  <label for="d">Description</label><textarea id="d" rows="4"></textarea>
-  <div class="g2"><div><label for="ly">Layer height</label><input id="ly" value="0.2 mm"></div><div><label for="in">Infill</label><input id="in" value="15%"></div></div>
-  <div class="g2"><div><label for="wl">Walls</label><input id="wl" type="number" min="1" value="3"></div><div><label for="su">Supports</label><input id="su" value="None"></div></div>
-  <label for="tg">Tags (comma separated)</label><input id="tg" placeholder="dragon, articulated">
-  <label for="co">Placeholder colour (used if there is no photo)</label><input id="co" type="color" value="#00ae42" style="height:44px;padding:4px">
-  <label>Photos</label><div id="pz">${DZ2('Drop photos here','.png,.jpg,.jpeg,.webp')}</div>
-  <label>3D files (STL)</label><div id="sz">${DZ2('Drop STL files here','.stl')}</div>
-  <div class="err" id="er" role="alert"></div><button class="btn" id="sb">Publish model</button></form></div></div>`;
+  let v={title:'',cat:'Figurines',mat:'PLA',hours:4,who:'ProLab',descr:'',lay:'0.2 mm',inf:'15%',walls:3,sup:'None',tags:'',col:'#00ae42'};
+  if(id){try{v=(await api('models/'+id)).model;}catch{location.hash='#/models';return;}}
+  const a=x=>esc(x??'');
+  app.innerHTML=`<div class="w page"><div style="max-width:680px"><h2>${id?'Edit model':'Add a premade model'}</h2>${id?'':'<p><a href="#/import">Or import many from a ZIP</a></p>'}<form id="f">
+  <label for="t">Title</label><input id="t" required maxlength="120" value="${a(v.title)}">
+  <div class="g2"><div><label for="c">Category</label><input id="c" list="cl" value="${a(v.cat)}" required><datalist id="cl"><option>Figurines</option><option>Functional</option><option>Prototypes</option></datalist></div><div><label for="m">Material</label><input id="m" value="${a(v.mat)}"></div></div>
+  <div class="g2"><div><label for="h">Print time (hours)</label><input id="h" type="number" min="0" step="0.5" value="${a(v.hours)}"></div><div><label for="wh">Made for</label><input id="wh" value="${a(v.who)}"></div></div>
+  <label for="d">Description</label><textarea id="d" rows="4">${a(v.descr)}</textarea>
+  <div class="g2"><div><label for="ly">Layer height</label><input id="ly" value="${a(v.lay)}"></div><div><label for="in">Infill</label><input id="in" value="${a(v.inf)}"></div></div>
+  <div class="g2"><div><label for="wl">Walls</label><input id="wl" type="number" min="1" value="${a(v.walls)}"></div><div><label for="su">Supports</label><input id="su" value="${a(v.sup)}"></div></div>
+  <label for="tg">Tags (comma separated)</label><input id="tg" placeholder="dragon, articulated" value="${a(v.tags)}">
+  <label for="co">Placeholder colour (used if there is no photo)</label><input id="co" type="color" value="${a(v.col||'#00ae42')}" style="height:44px;padding:4px">
+  <label>${id?'Add more photos':'Photos'}</label><div id="pz">${DZ2('Drop photos here','.png,.jpg,.jpeg,.webp')}</div>
+  <label>${id?'Add more 3D files (STL)':'3D files (STL)'}</label><div id="sz">${DZ2('Drop STL files here','.stl')}</div>
+  <div class="err" id="er" role="alert"></div><button class="btn" id="sb">${id?'Save changes':'Publish model'}</button></form></div></div>`;
   const ph=[],sl=[];dropzone($('#pz'),ph);dropzone($('#sz'),sl);
-  $('#f').onsubmit=async e=>{e.preventDefault();$('#er').textContent='';const sb=$('#sb');sb.disabled=true;sb.textContent='Publishing…';let r;
-    try{r=await api('models',{title:$('#t').value,cat:$('#c').value,mat:$('#m').value,hours:+$('#h').value,who:$('#wh').value,descr:$('#d').value,lay:$('#ly').value,inf:$('#in').value,walls:+$('#wl').value,sup:$('#su').value,tags:$('#tg').value,col:$('#co').value});}
-    catch(x){$('#er').textContent=x.message;sb.disabled=false;sb.textContent='Publish model';return;}
-    try{await upModel(r.id,ph,'img');await upModel(r.id,sl,'stl');}catch(x){alert('The model was created, but a file did not upload: '+x.message);}
-    location.hash='#/model/'+r.id;};
+  $('#f').onsubmit=async e=>{e.preventDefault();$('#er').textContent='';const sb=$('#sb');sb.disabled=true;
+    const body={title:$('#t').value,cat:$('#c').value,mat:$('#m').value,hours:+$('#h').value,who:$('#wh').value,descr:$('#d').value,lay:$('#ly').value,inf:$('#in').value,walls:+$('#wl').value,sup:$('#su').value,tags:$('#tg').value,col:$('#co').value};let mid=id;
+    try{if(id)await api(`models/${id}/update`,body);else mid=(await api('models',body)).id;}
+    catch(x){$('#er').textContent=x.message;sb.disabled=false;return;}
+    try{await upModel(mid,ph,'img');await upModel(mid,sl,'stl');}catch(x){alert('Saved, but a file did not upload: '+x.message);}
+    location.hash='#/model/'+mid;};
+}
+function importZip(){
+  if(!me?.admin){location.hash='#/';return;}
+  app.innerHTML=`<div class="w page"><div style="max-width:680px"><h2>Import a ZIP of models</h2>
+  <p style="color:var(--mut)">Put each model in its own folder (the folder name becomes the title) with its STL files and photos inside. Loose STL files at the top level become one model each. You can edit the details afterwards.</p>
+  <form id="f"><div class="g2"><div><label for="c">Category</label><input id="c" value="Figurines"></div><div><label for="m">Material</label><input id="m" value="PLA"></div></div>
+  <div class="g2"><div><label for="wh">Made for</label><input id="wh" value="ProLab"></div><div><label for="co">Placeholder colour</label><input id="co" type="color" value="#00ae42" style="height:44px;padding:4px"></div></div>
+  <label>ZIP file (up to 50 MB)</label><div id="zz">${DZ2('Drop a .zip here','.zip')}</div>
+  <div class="err" id="er" role="alert"></div><button class="btn" id="sb">Import</button></form><div id="res"></div></div></div>`;
+  const z=[];dropzone($('#zz'),z);
+  $('#f').onsubmit=async e=>{e.preventDefault();$('#er').textContent='';if(!z.length){$('#er').textContent='Choose a zip file first.';return;}
+    const sb=$('#sb');sb.disabled=true;sb.textContent='Importing…';
+    try{const r=await fetch('/api/models/import',{method:'POST',headers:{'content-type':'application/octet-stream','x-cat':encodeURIComponent($('#c').value),'x-mat':encodeURIComponent($('#m').value),'x-who':encodeURIComponent($('#wh').value),'x-col':$('#co').value},body:z[0]});
+      const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Import failed. The zip may be too big or too heavy to unpack.');
+      $('#res').innerHTML=`<h3>Created ${d.created.length} model${d.created.length==1?'':'s'}</h3><ul class="fl2">${d.created.map(c=>`<li><a href="#/model/${c.id}">${esc(c.title)}</a><small>${c.stls} STL, ${c.imgs} photos</small><a class="mini" href="#/edit/${c.id}">Edit</a></li>`).join('')}</ul>`;
+      z.length=0;$('#zz .fl2').innerHTML='';}catch(x){$('#er').textContent=x.message;}
+    sb.disabled=false;sb.textContent='Import';};
 }
 let raf;
 function topo(){cancelAnimationFrame(raf);const cv=document.querySelector('canvas.topo');if(!cv)return;
@@ -325,8 +346,8 @@ async function orderPage(id){
 }
 async function route(){
   clearInterval(poll);$('#nav').classList.remove('open');const [p,id]=(location.hash.slice(2)||'').split('/');
-  if(['orders','new','order','add'].includes(p)&&!me){location.hash='#/login';return;}
-  const r={'':home,models,gallery:models,model:()=>modelPage(+id),work:()=>modelPage(+id),add:addModel,login,orders,new:newOrder,order:()=>orderPage(id)};(r[p]||home)();scrollTo(0,0);fx();if(!p){liveStats();loadHome();}
+  if(['orders','new','order','add','edit','import'].includes(p)&&!me){location.hash='#/login';return;}
+  const r={'':home,models,gallery:models,model:()=>modelPage(+id),work:()=>modelPage(+id),add:addModel,edit:()=>addModel(+id),import:importZip,login,orders,new:newOrder,order:()=>orderPage(id)};(r[p]||home)();scrollTo(0,0);fx();if(!p){liveStats();loadHome();}
 }
 addEventListener('hashchange',route);
 (async()=>{try{cfg=await api('config');me=(await api('me')).user;}catch{}
