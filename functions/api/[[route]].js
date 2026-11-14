@@ -62,6 +62,54 @@ export async function onRequest({request:req,env,waitUntil}){
 
   const me=await getUser(env,req);
   if(a==='me')return J({user:me});
+  if(a==='mfile'){
+    const key='models/'+p.slice(1).join('/');
+    const obj=await env.FILES?.get(key);if(!obj)return E('Not found.',404);
+    const ext=key.split('.').pop().toLowerCase();
+    return new Response(obj.body,{headers:{'content-type':{webp:'image/webp',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg'}[ext]||'application/octet-stream','cache-control':'public, max-age=86400','x-content-type-options':'nosniff'}});
+  }
+  if(a==='models'){
+    const Q=`SELECT m.*,(SELECT COUNT(*) FROM model_likes l WHERE l.model_id=m.id) likes,(SELECT COUNT(*) FROM orders o WHERE o.model_id=m.id AND o.status IN ('shipped','done')) prints FROM models m`;
+    if(!b&&req.method==='GET')return J({models:(await env.DB.prepare(Q+' ORDER BY m.id DESC').all()).results});
+    if(!b&&req.method==='POST'){
+      if(!me?.admin)return E('Not allowed.',403);
+      const t=String(body.title||'').trim();if(!t)return E('Give the model a title.');
+      const s=(v,n)=>String(v??'').slice(0,n);
+      const r=await env.DB.prepare('INSERT INTO models(title,cat,mat,hours,who,descr,lay,inf,walls,sup,tags,col,imgs,stls,views,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        .bind(s(t,120),s(body.cat||'Other',40),s(body.mat,40),+body.hours||0,s(body.who||'ProLab',60),s(body.descr,4000),s(body.lay,30),s(body.inf,30),+body.walls||0,s(body.sup,60),s(body.tags,200),/^#[0-9a-f]{6}$/i.test(body.col)?body.col:'#00ae42','[]','[]',0,now()).run();
+      return J({id:r.meta.last_row_id});
+    }
+    const m=await env.DB.prepare(Q+' WHERE m.id=?').bind(+b).first();
+    if(!m)return E('Not found.',404);
+    if(!c&&req.method==='GET'){m.liked=me?!!(await env.DB.prepare('SELECT 1 FROM model_likes WHERE model_id=? AND user_id=?').bind(m.id,me.id).first()):false;return J({model:m});}
+    if(c==='view'){await env.DB.prepare('UPDATE models SET views=views+1 WHERE id=?').bind(m.id).run();return J({ok:1});}
+    if(!me)return E('Sign in first.',401);
+    if(c==='like'){
+      const had=await env.DB.prepare('SELECT 1 FROM model_likes WHERE model_id=? AND user_id=?').bind(m.id,me.id).first();
+      await env.DB.prepare(had?'DELETE FROM model_likes WHERE model_id=? AND user_id=?':'INSERT INTO model_likes VALUES(?,?)').bind(m.id,me.id).run();
+      return J({liked:!had,likes:m.likes+(had?-1:1)});
+    }
+    if(!me.admin)return E('Not allowed.',403);
+    if(c==='files'&&req.method==='POST'){
+      if(!env.FILES)return E('File storage is not set up yet.',503);
+      const kind=req.headers.get('x-kind')==='stl'?'stl':'img';
+      const name=decodeURIComponent(req.headers.get('x-filename')||'file').replace(/[^A-Za-z0-9._-]/g,'_').slice(-80);
+      if(!(kind==='stl'?/\.stl$/i:/\.(png|jpe?g|webp)$/i).test(name))return E('This file type is not allowed.');
+      if(+req.headers.get('content-length')>26214400)return E('Max file size is 25 MB.');
+      const buf=await req.arrayBuffer();if(buf.byteLength>26214400)return E('Max file size is 25 MB.');
+      const path=`${m.id}/${rnd(6)}-${name}`;await env.FILES.put('models/'+path,buf);
+      const col=kind==='stl'?'stls':'imgs',arr=JSON.parse(m[col]||'[]');arr.push('/api/mfile/'+path);
+      await env.DB.prepare(`UPDATE models SET ${col}=? WHERE id=?`).bind(JSON.stringify(arr),m.id).run();
+      return J({ok:1});
+    }
+    if(c==='delete'&&req.method==='POST'){
+      if(env.FILES){const l=await env.FILES.list({prefix:`models/${m.id}/`});if(l.objects.length)await env.FILES.delete(l.objects.map(o=>o.key));}
+      await env.DB.batch([env.DB.prepare('DELETE FROM model_likes WHERE model_id=?').bind(m.id),env.DB.prepare('DELETE FROM models WHERE id=?').bind(m.id)]);
+      return J({ok:1});
+    }
+    return E('Not found.',404);
+  }
+
   if(!me)return E('Sign in first.',401);
 
   if(a==='files'&&b){
@@ -75,8 +123,8 @@ export async function onRequest({request:req,env,waitUntil}){
     if(req.method==='POST'){
       const t=String(body.title||'').trim();
       if(!t)return E('Give your request a title.');
-      const r=await env.DB.prepare('INSERT INTO orders(user_id,title,kind,details,material,qty,link,created) VALUES(?,?,?,?,?,?,?,?)')
-        .bind(me.id,t.slice(0,120),body.kind==='design'?'design':'print',String(body.details||'').slice(0,4000),String(body.material||'PLA').slice(0,30),Math.max(1,Math.min(500,+body.qty||1)),String(body.link||'').slice(0,500),now()).run();
+      const r=await env.DB.prepare('INSERT INTO orders(user_id,title,kind,details,material,qty,link,created,model_id) VALUES(?,?,?,?,?,?,?,?,?)')
+        .bind(me.id,t.slice(0,120),body.kind==='design'?'design':'print',String(body.details||'').slice(0,4000),String(body.material||'PLA').slice(0,30),Math.max(1,Math.min(500,+body.qty||1)),String(body.link||'').slice(0,500),now(),+body.model||null).run();
       return J({id:r.meta.last_row_id});
     }
     const q=me.admin?'SELECT o.*,u.email FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC LIMIT 200'
