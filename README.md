@@ -31,5 +31,3 @@ Enable R2 in the Cloudflare dashboard (Storage & databases, R2), then `npx wrang
 ## Models catalog
 Run once on an existing database: `npx wrangler d1 execute prolab --remote --file=migrate.sql`, then `--file=seed.sql` to add the 7 starter models (run seed only once). Admins add more with the "Add model" link. Views, likes and "made" start at 0: "made" counts shipped or done requests that were started from that model's "Order this model" button.
 
-## Importing a ZIP
-Admin menu, Add model, then "Import ZIP" (`#/import`). Each folder in the zip becomes one model (folder name = title) holding its STL files and photos. Loose STL files at the top level become one model each. The unpacking runs in the backend and stores the files in R2. Keep zips under 50 MB.

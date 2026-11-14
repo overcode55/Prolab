@@ -93,32 +93,6 @@ export async function onRequest({request:req,env,waitUntil}){
         .bind(s(t,120),s(body.cat||'Other',40),s(body.mat,40),+body.hours||0,s(body.who||'ProLab',60),s(body.descr,4000),s(body.lay,30),s(body.inf,30),+body.walls||0,s(body.sup,60),s(body.tags,200),/^#[0-9a-f]{6}$/i.test(body.col)?body.col:'#00ae42','[]','[]',0,now()).run();
       return J({id:r.meta.last_row_id});
     }
-    if(b==='import'&&req.method==='POST'){
-      if(!me?.admin)return E('Not allowed.',403);
-      if(!env.FILES)return E('File storage is not set up yet.',503);
-      if(+req.headers.get('content-length')>52428800)return E('The zip is over 50 MB.');
-      const buf=await req.arrayBuffer();if(buf.byteLength>52428800)return E('The zip is over 50 MB.');
-      let ents;try{ents=await unzip(buf);}catch(x){return E(x.message);}
-      const hd=k=>decodeURIComponent(req.headers.get(k)||''),cat=hd('x-cat')||'Figurines',mat=hd('x-mat')||'PLA',who=hd('x-who')||'ProLab',col=/^#[0-9a-f]{6}$/i.test(hd('x-col'))?hd('x-col'):'#00ae42';
-      const files=ents.map(e=>{const parts=e.name.split('/').filter(Boolean);return{...e,parts,ext:(parts[parts.length-1].match(/\.([a-z0-9]+)$/i)||[])[1]?.toLowerCase()};}).filter(f=>['stl','png','jpg','jpeg','webp'].includes(f.ext));
-      if(new Set(files.map(f=>f.parts[0])).size===1&&files.every(f=>f.parts.length>1)&&files.some(f=>f.parts.length>2))files.forEach(f=>f.parts.shift());
-      const groups={};
-      for(const f of files){const last=f.parts[f.parts.length-1],g=f.parts.length>1?f.parts[0]:last.replace(/\.[^.]+$/,'');(groups[g]??=[]).push(f);}
-      const created=[];
-      for(const [g,fs] of Object.entries(groups)){
-        if(!fs.some(f=>f.ext==='stl'))continue;
-        fs.sort((x,y)=>x.parts.join('/').localeCompare(y.parts.join('/'),undefined,{numeric:true}));
-        const title=g.replace(/_+/g,' ').trim().slice(0,120)||'Untitled';
-        const r=await env.DB.prepare('INSERT INTO models(title,cat,mat,hours,who,descr,lay,inf,walls,sup,tags,col,imgs,stls,views,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(title,cat.slice(0,40),mat.slice(0,40),0,who.slice(0,60),'','0.2 mm','15%',3,'None','',col,'[]','[]',0,now()).run();
-        const id=r.meta.last_row_id,imgs=[],stls=[];
-        for(const f of fs){const name=f.parts[f.parts.length-1].replace(/[^A-Za-z0-9._-]/g,'_').slice(-80),path=`${id}/${rnd(6)}-${name}`;
-          await env.FILES.put('models/'+path,await f.read());(f.ext==='stl'?stls:imgs).push('/api/mfile/'+path);}
-        await env.DB.prepare('UPDATE models SET imgs=?,stls=? WHERE id=?').bind(JSON.stringify(imgs),JSON.stringify(stls),id).run();
-        created.push({id,title,stls:stls.length,imgs:imgs.length});
-      }
-      if(!created.length)return E('No STL files were found in the zip.');
-      return J({created});
-    }
     const m=await env.DB.prepare(Q+' WHERE m.id=?').bind(+b).first();
     if(!m)return E('Not found.',404);
     if(!c&&req.method==='GET'){m.liked=me?!!(await env.DB.prepare('SELECT 1 FROM model_likes WHERE model_id=? AND user_id=?').bind(m.id,me.id).first()):false;return J({model:m});}

@@ -165,7 +165,7 @@ const home=()=>app.innerHTML=`
 function liveStats(){api('stats').then(d=>document.querySelectorAll('.stats b[data-k]').forEach(b=>{b.dataset.n=d[b.dataset.k]||0;b.classList.add('cnt');io.observe(b);})).catch(()=>{});}
 function loadHome(){loadModels().then(ms=>{const g=$('#hg');if(!g)return;const top=[...ms].sort((a,b)=>(b.views+b.ordered*5)-(a.views+a.ordered*5)||b.id-a.id).slice(0,4);g.innerHTML=top.length?top.map(tile).join(''):'<p>No models yet.</p>';fx();}).catch(()=>{});}
 async function models(){
-  app.innerHTML=`<section class="ph"><canvas class="topo" aria-hidden="true"></canvas><div class="w"><h1>Premade models</h1><p>Ready to print, or tell us what to change.</p>${me?.admin?'<br><a class="btn" href="#/add">Add a model</a> <a class="btn d" href="#/import">Import ZIP</a>':''}</div></section>
+  app.innerHTML=`<section class="ph"><canvas class="topo" aria-hidden="true"></canvas><div class="w"><h1>Premade models</h1><p>Ready to print, or tell us what to change.</p>${me?.admin?'<br><a class="btn" href="#/add">Add a model</a>':''}</div></section>
   <div class="w page"><div class="sb"><input id="q" type="search" placeholder="Search models, e.g. dragon" aria-label="Search models"><select id="so" aria-label="Sort"><option value="n">Newest</option><option value="l">Most liked</option><option value="p">Most made</option><option value="v">Most viewed</option></select></div><div class="fl" id="ct"></div><p id="rc" style="color:var(--mut)"></p><div class="gal" id="gl"></div></div>`;
   let all=[],cat='All';try{all=await loadModels();}catch{}
   $('#ct').innerHTML=['All',...new Set(all.map(m=>m.cat))].map((c,i)=>`<button class="${i?'':'on'}">${esc(c)}</button>`).join('');
@@ -239,7 +239,7 @@ async function addModel(id){
   if(id){try{v=(await api('models/'+id)).model;}catch{location.hash='#/models';return;}}
   const a=x=>esc(x??'');let known=[];
   try{const cn={};(await loadModels()).forEach(m=>m.tags.forEach(t=>{t=t.toLowerCase();cn[t]=(cn[t]||0)+1;}));known=Object.keys(cn).sort((x,y)=>cn[y]-cn[x]||x.localeCompare(y));}catch{}
-  app.innerHTML=`<div class="w page"><div style="max-width:680px"><h2>${id?'Edit model':'Add a premade model'}</h2>${id?'':'<p><a href="#/import">Or import many from a ZIP</a></p>'}<form id="f">
+  app.innerHTML=`<div class="w page"><div style="max-width:680px"><h2>${id?'Edit model':'Add a premade model'}</h2><form id="f">
   <label for="t">Title</label><input id="t" required maxlength="120" value="${a(v.title)}">
   <div class="g2"><div><label for="c">Category</label><input id="c" list="cl" value="${a(v.cat)}" required><datalist id="cl"><option>Figurines</option><option>Functional</option><option>Prototypes</option></datalist></div><div><label for="m">Material</label><input id="m" value="${a(v.mat)}"></div></div>
   <div class="g2"><div><label for="h">Print time (hours)</label><input id="h" type="number" min="0" step="0.5" value="${a(v.hours)}"></div><div><label for="wh">Made for</label><input id="wh" value="${a(v.who)}"></div></div>
@@ -258,23 +258,6 @@ async function addModel(id){
     catch(x){$('#er').textContent=x.message;sb.disabled=false;return;}
     try{await upModel(mid,ph,'img');await upModel(mid,sl,'stl');}catch(x){alert('Saved, but a file did not upload: '+x.message);}
     location.hash='#/model/'+mid;};
-}
-function importZip(){
-  if(!me?.admin){location.hash='#/';return;}
-  app.innerHTML=`<div class="w page"><div style="max-width:680px"><h2>Import a ZIP of models</h2>
-  <p style="color:var(--mut)">Put each model in its own folder (the folder name becomes the title) with its STL files and photos inside. Loose STL files at the top level become one model each. You can edit the details afterwards.</p>
-  <form id="f"><div class="g2"><div><label for="c">Category</label><input id="c" value="Figurines"></div><div><label for="m">Material</label><input id="m" value="PLA"></div></div>
-  <div class="g2"><div><label for="wh">Made for</label><input id="wh" value="ProLab"></div><div><label for="co">Placeholder colour</label><input id="co" type="color" value="#00ae42" style="height:44px;padding:4px"></div></div>
-  <label>ZIP file (up to 50 MB)</label><div id="zz">${DZ2('Drop a .zip here','.zip')}</div>
-  <div class="err" id="er" role="alert"></div><button class="btn" id="sb">Import</button></form><div id="res"></div></div></div>`;
-  const z=[];dropzone($('#zz'),z,null,true);
-  $('#f').onsubmit=async e=>{e.preventDefault();$('#er').textContent='';if(!z.length){$('#er').textContent='Choose a zip file first.';return;}
-    const sb=$('#sb');sb.disabled=true;sb.textContent='Importing…';
-    try{const r=await fetch('/api/models/import',{method:'POST',headers:{'content-type':'application/octet-stream','x-cat':encodeURIComponent($('#c').value),'x-mat':encodeURIComponent($('#m').value),'x-who':encodeURIComponent($('#wh').value),'x-col':$('#co').value},body:z[0]});
-      const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Import failed. The zip may be too big or too heavy to unpack.');
-      $('#res').innerHTML=`<h3>Created ${d.created.length} model${d.created.length==1?'':'s'}</h3><ul class="fl2">${d.created.map(c=>`<li><a href="#/model/${c.id}">${esc(c.title)}</a><small>${c.stls} STL, ${c.imgs} photos</small><a class="mini" href="#/edit/${c.id}">Edit</a></li>`).join('')}</ul>`;
-      z.length=0;$('#zz .fl2').innerHTML='';}catch(x){$('#er').textContent=x.message;}
-    sb.disabled=false;sb.textContent='Import';};
 }
 let raf;
 function topo(){cancelAnimationFrame(raf);const cv=document.querySelector('canvas.topo');if(!cv)return;
@@ -371,8 +354,8 @@ async function orderPage(id){
 }
 async function route(){
   clearInterval(poll);$('#nav').classList.remove('open');const [p,id]=(location.hash.slice(2)||'').split('/');
-  if(['orders','new','order','add','edit','import'].includes(p)&&!me){location.hash='#/login';return;}
-  const r={'':home,models,gallery:models,model:()=>modelPage(+id),work:()=>modelPage(+id),add:addModel,edit:()=>addModel(+id),import:importZip,login,orders,new:newOrder,order:()=>orderPage(id)};(r[p]||home)();scrollTo(0,0);fx();if(!p){liveStats();loadHome();}
+  if(['orders','new','order','add','edit'].includes(p)&&!me){location.hash='#/login';return;}
+  const r={'':home,models,gallery:models,model:()=>modelPage(+id),work:()=>modelPage(+id),add:addModel,edit:()=>addModel(+id),login,orders,new:newOrder,order:()=>orderPage(id)};(r[p]||home)();scrollTo(0,0);fx();if(!p){liveStats();loadHome();}
 }
 addEventListener('hashchange',route);
 (async()=>{try{cfg=await api('config');me=(await api('me')).user;}catch{}
