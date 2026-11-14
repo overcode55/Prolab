@@ -122,7 +122,7 @@ export async function onRequest({request:req,env,waitUntil}){
       const kind=req.headers.get('x-kind')==='stl'?'stl':'img';
       const name=decodeURIComponent(req.headers.get('x-filename')||'file').replace(/[^A-Za-z0-9._-]/g,'_').slice(-80);
       const zip=kind==='stl'&&/\.zip$/i.test(name),lim=zip?52428800:26214400;
-      if(!zip&&!(kind==='stl'?/\.stl$/i:/\.(png|jpe?g|webp)$/i).test(name))return E('This file type is not allowed.');
+      if(!zip&&!(kind==='stl'?/\.(stl|3mf|obj|stp|step)$/i:/\.(png|jpe?g|webp)$/i).test(name))return E('This file type is not allowed.');
       if(+req.headers.get('content-length')>lim)return E(`Max file size is ${lim>>20} MB.`);
       const buf=await req.arrayBuffer();if(buf.byteLength>lim)return E(`Max file size is ${lim>>20} MB.`);
       const imgs=JSON.parse(m.imgs||'[]'),stls=JSON.parse(m.stls||'[]');
@@ -131,8 +131,8 @@ export async function onRequest({request:req,env,waitUntil}){
         let ents;try{ents=await unzip(buf);}catch(x){return E(x.message);}
         ents.sort((x,y)=>x.name.localeCompare(y.name,undefined,{numeric:true}));let n=0;
         for(const e of ents){const base=e.name.split('/').pop(),ext=(base.match(/\.([a-z0-9]+)$/i)||[])[1]?.toLowerCase();
-          if(ext==='stl'||['png','jpg','jpeg','webp'].includes(ext)){await put(base.replace(/[^A-Za-z0-9._-]/g,'_').slice(-80),await e.read(),ext==='stl'?'stl':'img');n++;}}
-        if(!n)return E('No STL files were found in the zip.');
+          const is3d=['stl','3mf','obj','stp','step'].includes(ext);if(is3d||['png','jpg','jpeg','webp'].includes(ext)){await put(base.replace(/[^A-Za-z0-9._-]/g,'_').slice(-80),await e.read(),is3d?'stl':'img');n++;}}
+        if(!n)return E('No 3D files were found in the zip.');
       }else await put(name,buf,kind);
       await env.DB.prepare('UPDATE models SET imgs=?,stls=? WHERE id=?').bind(JSON.stringify(imgs),JSON.stringify(stls),m.id).run();
       return J({ok:1});

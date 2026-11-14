@@ -180,18 +180,31 @@ async function models(){
 }
 const load=src=>new Promise((ok,no)=>{if(document.querySelector(`script[src="${src}"]`))return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s);});
 async function view3d(el,w,n){
+  const url=w.stl[n],ext=url.split('?')[0].split('.').pop().toLowerCase(),N=w.stl.length;
+  const sw=N>1?`<div class="sw"><button type="button" data-d="-1" aria-label="Previous model">‹</button><span>${n+1} / ${N}</span><button type="button" data-d="1" aria-label="Next model">›</button></div>`:'';
+  const wire=()=>el.querySelector('.sw')?.addEventListener('click',e=>{const b=e.target.closest('button');if(b)view3d(el,w,(n+ +b.dataset.d+N)%N);});
+  if(ext==='step'||ext==='stp'){el.innerHTML=`<div style="padding:28px;text-align:center"><p><b>STEP files cannot be previewed in the browser.</b></p><a class="btn" href="${esc(url)}" download>Download ${ext.toUpperCase()} file</a></div>${sw}`;wire();return;}
   el.innerHTML='<p style="padding:20px">Loading viewer…</p>';const B='https://cdn.jsdelivr.net/npm/three@0.128.0/';
-  try{await load(B+'build/three.min.js');await load(B+'examples/js/loaders/STLLoader.js');await load(B+'examples/js/controls/OrbitControls.js');}catch{el.innerHTML='<p style="padding:20px">Could not load the 3D viewer.</p>';return;}
-  const N=w.stl.length;el.innerHTML='<canvas style="width:100%;height:100%;display:block"></canvas><small class="vn"></small>'+(N>1?`<div class="sw"><button type="button" data-d="-1" aria-label="Previous model">‹</button><span>${n+1} / ${N}</span><button type="button" data-d="1" aria-label="Next model">›</button></div>`:'');
-  el.querySelector('.sw')?.addEventListener('click',e=>{const b=e.target.closest('button');if(b)view3d(el,w,(n+ +b.dataset.d+N)%N);});
+  try{await load(B+'build/three.min.js');await load(B+'examples/js/controls/OrbitControls.js');
+    if(ext==='3mf'){await load(B+'examples/js/libs/fflate.min.js');await load(B+'examples/js/loaders/3MFLoader.js');}
+    else await load(B+'examples/js/loaders/'+(ext==='obj'?'OBJLoader':'STLLoader')+'.js');}
+  catch{el.innerHTML='<p style="padding:20px">Could not load the 3D viewer.</p>'+sw;wire();return;}
+  el.innerHTML='<canvas style="width:100%;height:100%;display:block"></canvas><small class="vn"></small>'+sw;wire();
   const cv=el.querySelector('canvas'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}),S=new THREE.Scene(),C=new THREE.PerspectiveCamera(40,1,.1,2000),note=el.querySelector('.vn');
   R.setPixelRatio(devicePixelRatio);S.add(new THREE.HemisphereLight(0xffffff,0x666666,1));const L=new THREE.DirectionalLight(0xffffff,.8);L.position.set(3,5,4);S.add(L);
-  let g,stl=true;
-  try{g=await new Promise((ok,no)=>new THREE.STLLoader().load(w.stl[n],ok,undefined,no));note.textContent='Drag to rotate, scroll to zoom';}
-  catch{stl=false;g=new THREE.TorusKnotGeometry(1,.35,160,24);note.textContent=`Demo shape. The 3D file could not be loaded.`;}
-  g.computeVertexNormals();g.center();g.computeBoundingSphere();
-  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:w.col,roughness:.5,metalness:.1}));if(stl)m.rotation.x=-Math.PI/2;S.add(m);
-  const r=g.boundingSphere.radius;C.position.set(0,r*.7,r*3);
+  const mat=new THREE.MeshStandardMaterial({color:w.col,roughness:.5,metalness:.1,side:THREE.DoubleSide});
+  let obj,real=true;
+  try{
+    const ld=ext==='3mf'?new THREE.ThreeMFLoader():ext==='obj'?new THREE.OBJLoader():new THREE.STLLoader();
+    const res=await new Promise((ok,no)=>ld.load(url,ok,undefined,no));
+    if(ext==='stl'){res.computeVertexNormals();obj=new THREE.Mesh(res,mat);}
+    else{obj=res;if(ext==='obj')obj.traverse(o=>{if(o.isMesh)o.material=mat;});}
+    note.textContent='Drag to rotate, scroll to zoom';
+  }catch{real=false;obj=new THREE.Mesh(new THREE.TorusKnotGeometry(1,.35,160,24),mat);note.textContent='Demo shape. The 3D file could not be loaded.';}
+  if(real&&ext!=='obj')obj.rotation.x=-Math.PI/2;
+  const pv=new THREE.Group();pv.add(obj);S.add(pv);
+  const bx=new THREE.Box3().setFromObject(pv);obj.position.sub(bx.getCenter(new THREE.Vector3()));
+  const rad=bx.getSize(new THREE.Vector3()).length()/2||1;C.near=rad/100;C.far=rad*100;C.position.set(0,rad*.7,rad*2.6);
   const O=new THREE.OrbitControls(C,cv);O.enableDamping=true;O.autoRotate=true;O.autoRotateSpeed=1.5;
   const rs=()=>{R.setSize(el.clientWidth,el.clientHeight,false);C.aspect=el.clientWidth/el.clientHeight;C.updateProjectionMatrix();};rs();addEventListener('resize',rs);
   const tick=()=>{if(!cv.isConnected)return;O.update();R.render(S,C);requestAnimationFrame(tick);};tick();
@@ -251,7 +264,7 @@ async function addModel(id){
   <label for="tgi">Tags</label><div class="tg" id="tgw"><span id="chips"></span><input id="tgi" autocomplete="off" placeholder="Search or add a tag…"></div><ul class="sg" id="sg" hidden></ul>
   <label for="co">Placeholder colour (used if there is no photo)</label><input id="co" type="color" value="${a(v.col||'#00ae42')}" style="height:44px;padding:4px">
   <label>${id?'Add more photos':'Photos'}</label><div id="pz">${DZ2('Drop photos here','.png,.jpg,.jpeg,.webp')}</div>
-  <label>${id?'Add more 3D files (STL or ZIP)':'3D files (STL or ZIP)'}</label><div id="sz">${DZ2('Drop STL or ZIP files here','.stl,.zip','STL up to 25 MB, ZIP up to 50 MB. A zip is unpacked for you.')}</div>
+  <label>${id?'Add more 3D files':'3D files'} (STL, 3MF, OBJ, STEP or ZIP)</label><div id="sz">${DZ2('Drop 3D files or a ZIP here','.stl,.3mf,.obj,.step,.stp,.zip','Up to 25 MB each. A ZIP (up to 50 MB) is unpacked for you.')}</div>
   <div class="err" id="er" role="alert"></div><button class="btn" id="sb">${id?'Save changes':'Publish model'}</button></form></div></div>`;
   const ph=[],sl=[];dropzone($('#pz'),ph);dropzone($('#sz'),sl,null,true);const tg=tagInput(known,(v.tags||'').split(','));
   $('#f').onsubmit=async e=>{e.preventDefault();$('#er').textContent='';const sb=$('#sb');sb.disabled=true;
