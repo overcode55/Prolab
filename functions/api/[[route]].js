@@ -139,12 +139,20 @@ export async function onRequest({request:req,env,waitUntil}){
       if(!env.FILES)return E('File storage is not set up yet.',503);
       const kind=req.headers.get('x-kind')==='stl'?'stl':'img';
       const name=decodeURIComponent(req.headers.get('x-filename')||'file').replace(/[^A-Za-z0-9._-]/g,'_').slice(-80);
-      if(!(kind==='stl'?/\.stl$/i:/\.(png|jpe?g|webp)$/i).test(name))return E('This file type is not allowed.');
-      if(+req.headers.get('content-length')>26214400)return E('Max file size is 25 MB.');
-      const buf=await req.arrayBuffer();if(buf.byteLength>26214400)return E('Max file size is 25 MB.');
-      const path=`${m.id}/${rnd(6)}-${name}`;await env.FILES.put('models/'+path,buf);
-      const col=kind==='stl'?'stls':'imgs',arr=JSON.parse(m[col]||'[]');arr.push('/api/mfile/'+path);
-      await env.DB.prepare(`UPDATE models SET ${col}=? WHERE id=?`).bind(JSON.stringify(arr),m.id).run();
+      const zip=kind==='stl'&&/\.zip$/i.test(name),lim=zip?52428800:26214400;
+      if(!zip&&!(kind==='stl'?/\.stl$/i:/\.(png|jpe?g|webp)$/i).test(name))return E('This file type is not allowed.');
+      if(+req.headers.get('content-length')>lim)return E(`Max file size is ${lim>>20} MB.`);
+      const buf=await req.arrayBuffer();if(buf.byteLength>lim)return E(`Max file size is ${lim>>20} MB.`);
+      const imgs=JSON.parse(m.imgs||'[]'),stls=JSON.parse(m.stls||'[]');
+      const put=async(nm,data,k)=>{const path=`${m.id}/${rnd(6)}-${nm}`;await env.FILES.put('models/'+path,data);(k==='stl'?stls:imgs).push('/api/mfile/'+path);};
+      if(zip){
+        let ents;try{ents=await unzip(buf);}catch(x){return E(x.message);}
+        ents.sort((x,y)=>x.name.localeCompare(y.name,undefined,{numeric:true}));let n=0;
+        for(const e of ents){const base=e.name.split('/').pop(),ext=(base.match(/\.([a-z0-9]+)$/i)||[])[1]?.toLowerCase();
+          if(ext==='stl'||['png','jpg','jpeg','webp'].includes(ext)){await put(base.replace(/[^A-Za-z0-9._-]/g,'_').slice(-80),await e.read(),ext==='stl'?'stl':'img');n++;}}
+        if(!n)return E('No STL files were found in the zip.');
+      }else await put(name,buf,kind);
+      await env.DB.prepare('UPDATE models SET imgs=?,stls=? WHERE id=?').bind(JSON.stringify(imgs),JSON.stringify(stls),m.id).run();
       return J({ok:1});
     }
     if(c==='delete'&&req.method==='POST'){
