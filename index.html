@@ -93,6 +93,7 @@ nav.open .nl{display:flex}.nl a.l{padding:13px 0;border-bottom:1px solid var(--l
 .tg input,.tg input:focus{border:0;outline:0!important;flex:1;min-width:130px;padding:6px 2px;width:auto}#chips{display:contents}
 .chip{display:inline-flex;align-items:center;gap:4px;background:var(--alt);border:1px solid var(--line);border-radius:3px;padding:3px 4px 3px 9px;font-size:.88rem}.chip button{border:0;background:none;cursor:pointer;font-size:1.15rem;line-height:1;padding:0 5px;color:var(--mut)}
 .sg{list-style:none;margin:4px 0 0;padding:4px;border:1px solid var(--line);border-radius:4px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.08)}.sg li{padding:10px;border-radius:3px;cursor:pointer}.sg li:hover,.sg li.on{background:#eef8f1}
+.sw{position:absolute;right:10px;bottom:8px;display:flex;align-items:center;gap:2px;background:#fff;border:1px solid var(--line);border-radius:3px;padding:2px}.sw button{border:0;background:none;width:34px;height:30px;font-size:1.3rem;line-height:1;cursor:pointer}.sw button:hover{background:var(--alt)}.sw span{font-size:.82rem;min-width:46px;text-align:center}.vn{max-width:calc(100% - 150px)}
 </style></head><body>
 <div class="top">Quotes within one working day. Custom models designed from a sketch or a photo.</div>
 <header><div class="w"><nav id="nav"></nav></div></header>
@@ -181,7 +182,8 @@ const load=src=>new Promise((ok,no)=>{if(document.querySelector(`script[src="${s
 async function view3d(el,w,n){
   el.innerHTML='<p style="padding:20px">Loading viewer…</p>';const B='https://cdn.jsdelivr.net/npm/three@0.128.0/';
   try{await load(B+'build/three.min.js');await load(B+'examples/js/loaders/STLLoader.js');await load(B+'examples/js/controls/OrbitControls.js');}catch{el.innerHTML='<p style="padding:20px">Could not load the 3D viewer.</p>';return;}
-  el.innerHTML='<canvas style="width:100%;height:100%;display:block"></canvas><small class="vn"></small>';
+  const N=w.stl.length;el.innerHTML='<canvas style="width:100%;height:100%;display:block"></canvas><small class="vn"></small>'+(N>1?`<div class="sw"><button type="button" data-d="-1" aria-label="Previous model">‹</button><span>${n+1} / ${N}</span><button type="button" data-d="1" aria-label="Next model">›</button></div>`:'');
+  el.querySelector('.sw')?.addEventListener('click',e=>{const b=e.target.closest('button');if(b)view3d(el,w,(n+ +b.dataset.d+N)%N);});
   const cv=el.querySelector('canvas'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}),S=new THREE.Scene(),C=new THREE.PerspectiveCamera(40,1,.1,2000),note=el.querySelector('.vn');
   R.setPixelRatio(devicePixelRatio);S.add(new THREE.HemisphereLight(0xffffff,0x666666,1));const L=new THREE.DirectionalLight(0xffffff,.8);L.position.set(3,5,4);S.add(L);
   let g,stl=true;
@@ -198,7 +200,7 @@ async function modelPage(id){
   let m;try{m=norm((await api('models/'+id)).model);}catch{location.hash='#/models';return;}
   try{if(!sessionStorage.getItem('v'+id)){sessionStorage.setItem('v'+id,'1');api(`models/${id}/view`,{}).catch(()=>{});m.views++;}}catch{}
   app.innerHTML=`<div class="w page"><p><a href="#/models">Models</a> / ${esc(m.cat)}</p><div class="wp"><div><div class="stage" id="st"></div>
-  <div class="th" id="th">${m.img.map((_,k)=>`<button data-k="${k}">${photo(m,k)}</button>`).join('')}${m.stl.map((_,n)=>`<button data-k="m${n}" class="d3">3D model${m.stl.length>1?' '+(n+1):''}</button>`).join('')}</div></div>
+  <div class="th" id="th">${m.img.map((_,k)=>`<button data-k="${k}">${photo(m,k)}</button>`).join('')}${m.stl.length?'<button data-k="m0" class="d3">3D model</button>':''}</div></div>
   <aside><h1 style="font-size:2rem">${esc(m.t)}</h1><p style="color:var(--mut)">Made for ${esc(m.who)}</p>
   <div class="stats s3" style="grid-template-columns:repeat(3,1fr)"><div style="padding:14px"><b style="font-size:1.3rem">${m.views}</b><span>views</span></div><div style="padding:14px"><b style="font-size:1.3rem" id="lkc">${m.likes}</b><span>likes</span></div><div style="padding:14px"><b style="font-size:1.3rem">${m.prints}</b><span>made</span></div></div><br>
   <a class="btn" href="#/new" id="mk" style="width:100%;text-align:center">Order this model</a>
