@@ -7,3 +7,6 @@ binding = "DB"
 database_name = "prolab"
 database_id = "a164982a-56b1-4c5a-b885-ede24fd37548"
 
+[[kv_namespaces]]
+binding = "FILES"
+id = "9d3b4ecc02ac452cb5d582b89c18ad7c"

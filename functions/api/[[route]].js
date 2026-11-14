@@ -38,7 +38,15 @@ async function unzip(buf,max=26214400){
   }
   return out;
 }
+// Files live in Workers KV (free, no card). This wrapper gives it the few R2-style calls used below.
+const kv=B=>({
+  get:async k=>{const s=await B.get(k,{type:'stream'});return s&&{body:s};},
+  put:(k,v)=>B.put(k,v),
+  delete:async ks=>{for(const k of [].concat(ks))await B.delete(k);},
+  list:async({prefix})=>({objects:(await B.list({prefix})).keys.map(x=>({key:x.name}))})
+});
 export async function onRequest({request:req,env,waitUntil}){
+  if(env.FILES)env={...env,FILES:kv(env.FILES)};
   const url=new URL(req.url),p=url.pathname.replace(/^\/api\/?/,'').split('/').filter(Boolean);
   const body=req.method==='POST'&&(req.headers.get('content-type')||'').includes('json')?await req.json().catch(()=>({})):{};
   const [a,b,c]=p;

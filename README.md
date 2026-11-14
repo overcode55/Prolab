@@ -25,8 +25,8 @@ assets/<folder>/<name>.stl    (optional, shown in the 3D viewer)
 ```
 Names are listed in the `WORK` array in `index.html`. Missing photos fall back to a drawing, missing STLs to a demo shape.
 
-## File uploads (R2)
-Enable R2 in the Cloudflare dashboard (Storage & databases, R2), then `npx wrangler r2 bucket create prolab-files` and re-run `schema.sql`. Remove the `[[r2_buckets]]` block from `wrangler.toml` if you do not want uploads.
+## File uploads (KV)
+Files are stored in Workers KV, which is free and needs no card. Run `npx wrangler kv namespace create FILES`, paste the id into `wrangler.toml`, and redeploy. KV allows 25 MB per file.
 
 ## Models catalog
 Run once on an existing database: `npx wrangler d1 execute prolab --remote --file=migrate.sql`, then `--file=seed.sql` to add the 7 starter models (run seed only once). Admins add more with the "Add model" link. Views, likes and "made" start at 0: "made" counts shipped or done requests that were started from that model's "Order this model" button.
